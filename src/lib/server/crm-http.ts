@@ -4,6 +4,12 @@ import { CrmApiError } from "./crm-auth";
 
 const privateHeaders = { "Cache-Control": "private, no-store", "Referrer-Policy": "no-referrer" };
 export function crmJson(value: unknown) { return Response.json(value, { headers: privateHeaders }); }
+/** Invalid stored data is a server/recovery failure, never a bad caller form. */
+export function parseCrmStored<T>(schema: z.ZodType<T>, value: unknown): T {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) throw new CrmApiError("crm_unavailable", "Calendar could not confirm the saved result. Check the operation before retrying.", 503);
+  return parsed.data;
+}
 export function crmFailure(error: unknown) {
   const failure = error instanceof CrmApiError ? error : error instanceof z.ZodError
     ? new CrmApiError("crm_invalid_input", "Check the task fields, estimated hours and selected dates.", 400)

@@ -71,8 +71,8 @@ export interface CrmAuthenticatedContext {
 export interface CrmStatus {
   apiVersion: typeof CRM_API_VERSION;
   status: "authenticated";
-  bookingEnabled: false;
-  capabilities: readonly ("connection_check" | "availability" | "previews")[];
+  bookingEnabled: boolean;
+  capabilities: readonly ("connection_check" | "availability" | "previews" | "bookings" | "requests" | "replies" | "operations" | "changes")[];
 }
 
 export const crmAvailabilityQuerySchema = z.object({ startDate: dateSchema, endDate: dateSchema }).strict()
@@ -83,7 +83,7 @@ export interface CrmVisibleWork {
   sessions: CrmTimeRange[];
 }
 export interface CrmAvailability {
-  apiVersion: "1"; bookingEnabled: false; timeZone: string; asOf: string; baseVersion: number;
+  apiVersion: "1"; bookingEnabled: boolean; timeZone: string; asOf: string; baseVersion: number;
   days: {
     date: string; capacityMinutes: number; plannedMinutes: number; availableMinutes: number;
     openings: CrmTimeRange[]; work: CrmVisibleWork[];
@@ -91,7 +91,7 @@ export interface CrmAvailability {
   }[];
 }
 export interface CrmPreview {
-  apiVersion: "1"; previewId: string; bookingEnabled: false; timeZone: string;
+  apiVersion: "1"; previewId: string; bookingEnabled: boolean; timeZone: string;
   createdAt: string; expiresAt: string; baseVersion: number;
   status: "fits" | "needs_approval" | "cannot_fit";
   task: { externalTaskId: string; title: string; client: { id: string; name: string }; estimatedMinutes: number; scheduling: CrmTaskInput["scheduling"] };
@@ -103,3 +103,21 @@ export interface CrmPreview {
     requiresDateChange: boolean; requiresDeadlineChange: boolean;
   }[];
 }
+
+export const crmSubmissionSchema = z.object({ operationId: z.uuid(), previewId: z.uuid(), note: z.string().trim().max(5000).default("") }).strict();
+export const crmReplySchema = z.object({ operationId: z.uuid(), externalTaskId: idSchema, message: z.string().trim().min(1).max(5000) }).strict();
+export type CrmSubmission = z.infer<typeof crmSubmissionSchema>;
+
+/** Parse responses too: accidental extra private fields are never forwarded. */
+export const crmPublicTaskSchema = z.object({
+  externalTaskId: idSchema, workItemId: idSchema.nullable(), requestId: idSchema.nullable(),
+  requestStatus: z.enum(["pending", "approved", "declined", "needs_information"]).nullable(),
+  status: z.enum(["planned", "in_progress", "waiting", "completed", "cancelled", "pending", "declined", "needs_information", "unbooked"]),
+  title: z.string(), client: z.object({ id: idSchema, name: z.string() }),
+  estimatedMinutes: z.number().nullable(), remainingMinutes: z.number().nullable(), priorityId: idSchema.nullable(),
+  targetDate: dateSchema.nullable(), deadline: dateSchema.nullable(), forecastDate: dateSchema.nullable(),
+  timeZone: z.string(), version: z.number().int().nonnegative(), decisionNote: z.string().nullable(),
+  sessions: z.array(z.object({ start: z.string(), end: z.string(), status: z.enum(["planned", "completed", "cancelled"]) })),
+});
+export const crmOperationResultSchema = z.object({ apiVersion: z.literal("1"), operationId: z.uuid(), status: z.literal("completed"), sequence: z.number().int().positive(), task: crmPublicTaskSchema });
+export type CrmOperationResult = z.infer<typeof crmOperationResultSchema>;

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Plus, Save, UserPlus } from "lucide-react";
 import type { AppState } from "@/lib/types";
 import { sortClientsByName } from "@/lib/clients";
 import { api, Field } from "./ui";
+import { CrmSettings } from "./crm-settings";
 
 const parseAliases = (text: string) =>
   text.split(",").map((alias) => alias.trim()).filter(Boolean);
@@ -86,7 +87,7 @@ export function SettingsPanel({
   return (
     <div className="settings-panel">
       <div className="tabs">
-        {["hours", "clients", "priorities", "team"].map((t) => (
+        {["hours", "clients", "priorities", "team", "CRM"].map((t) => (
           <button
             key={t}
             className={tab === t ? "active" : ""}
@@ -439,6 +440,7 @@ export function SettingsPanel({
           </div>
         </div>
       )}
+      {tab === "CRM" && <CrmSettings state={state} />}
       {tab === "team" && (
         <div>
           <h3>Shared visibility, clear boundaries</h3>

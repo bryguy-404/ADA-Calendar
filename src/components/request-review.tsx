@@ -122,6 +122,7 @@ export function RequestReview({ state, request, onState, onClose }: Props & { on
   return <div className="work-form">
     <p className="muted">Requested by {request.requesterName}. Revise the plan, review every affected commitment, then approve. Nothing moves during preview.</p>
     {request.note && <p className="inset">Latest note: {request.note}</p>}
+    {!!request.conversation?.length && <details className="inset" open><summary>Request conversation</summary>{request.conversation.map((entry, index) => <p key={`${entry.createdAt}/${index}`}><strong>{entry.author === "owner" ? "Bryan" : request.requesterName}:</strong> {entry.message}</p>)}</details>}
     {state.actor.role === "owner" && pending && <>
       {newItems.map(item => <section className="inset" key={item.id}>
         <h3>{item.title}</h3>

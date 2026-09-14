@@ -92,6 +92,8 @@ export interface PendingRequest {
   id: string; requesterId: string; requesterName: string; proposal: ScheduleProposal;
   status: "pending" | "approved" | "declined" | "needs_information";
   note: string; createdAt: string; resolvedAt: string | null;
+  /** Explicit requester replies and owner decision messages, never private notes. */
+  conversation?: { author: "owner" | "requester"; message: string; createdAt: string }[];
 }
 export interface Notification {
   id: string; eventId: string; recipient: string; recipientName: string; subject: string; body: string;

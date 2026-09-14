@@ -7,6 +7,7 @@ import type { Actor, ScheduleSnapshot, ScheduleProposal, WorkCommand, WorkSessio
 import { CRM_API_VERSION, CRM_PREVIEW_TTL_MINUTES, type CrmAuthenticatedContext, type CrmAvailability, type CrmPreview, type CrmTaskInput, type CrmTimeRange } from "../crm-integration";
 import { CrmApiError } from "./crm-auth";
 import { reviewFingerprint } from "./preview";
+import { crmBookingEnabled } from "./crm-flags";
 
 export interface CrmClientMapping { calendarClientId: string; revision: number }
 export interface CrmScheduleContext { snapshot: ScheduleSnapshot; mapping: CrmClientMapping | null }
@@ -53,7 +54,7 @@ export function crmAvailability(snapshot: ScheduleSnapshot, context: CrmAuthenti
         .map(block => ({ title: "Unavailable", start: Date.parse(block.start) < Date.parse(dayStart) ? dayStart : block.start, end: Date.parse(block.end) > Date.parse(dayEnd) ? dayEnd : block.end })),
     });
   }
-  return { apiVersion: CRM_API_VERSION, bookingEnabled: false, timeZone: snapshot.settings.timeZone, asOf: now, baseVersion: snapshot.version, days };
+  return { apiVersion: CRM_API_VERSION, bookingEnabled: crmBookingEnabled(), timeZone: snapshot.settings.timeZone, asOf: now, baseVersion: snapshot.version, days };
 }
 
 function commandFor(snapshot: ScheduleSnapshot, input: CrmTaskInput, actor: Actor, clientId: string, id: string, now: string): Extract<WorkCommand, { type: "create" }> {
@@ -151,7 +152,7 @@ export function prepareCrmPreview(context: CrmAuthenticatedContext, loaded: CrmS
     return JSON.stringify(before) === JSON.stringify(after) ? [] : [{ workItemId: item.id, title: item.title, client: clientFor(snapshot, item.clientId), before, after }];
   });
   const response: CrmPreview = {
-    apiVersion: CRM_API_VERSION, previewId, bookingEnabled: false, timeZone: snapshot.settings.timeZone,
+    apiVersion: CRM_API_VERSION, previewId, bookingEnabled: crmBookingEnabled(), timeZone: snapshot.settings.timeZone,
     createdAt: now, expiresAt: addMinutes(now, CRM_PREVIEW_TTL_MINUTES), baseVersion: snapshot.version,
     status: proposal.status === "ready" && !proposal.requiresApproval ? "fits" : proposal.requiresApproval ? "needs_approval" : "cannot_fit",
     task: { externalTaskId: input.externalTaskId, title: input.title, client, estimatedMinutes: input.estimatedMinutes, scheduling: input.scheduling },

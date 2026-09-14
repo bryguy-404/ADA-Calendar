@@ -10,7 +10,7 @@ describe("CRM foundation handshake", () => {
     vi.mocked(authenticateCrmRequest).mockResolvedValue({ connection: { credentialHash: "private", workspaceId: "private" }, requester: { email: "private" } } as Awaited<ReturnType<typeof authenticateCrmRequest>>);
     const response = await GET(new Request("https://calendar.example.invalid/api/integrations/crm/v1/status"));
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ apiVersion: "1", status: "authenticated", bookingEnabled: false, capabilities: ["connection_check", "availability", "previews"] });
+    expect(await response.json()).toEqual({ apiVersion: "1", status: "authenticated", bookingEnabled: false, capabilities: ["connection_check", "availability", "previews", "operations", "changes"] });
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(response.headers.has("access-control-allow-origin")).toBe(false);
     expect(response.headers.has("set-cookie")).toBe(false);
