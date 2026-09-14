@@ -35,7 +35,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next-e2e/types/**/*.ts",
-    ".next-e2e/dev/types/**/*.ts"
+    ".next-e2e/dev/types/**/*.ts",
+    ".next-crm-integration/types/**/*.ts",
+    ".next-crm-integration/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

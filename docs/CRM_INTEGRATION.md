@@ -13,7 +13,7 @@ Both applications keep their own repositories and deployments. Build Calendar's 
 | 2b. Calendar scheduling transactions | Owner connection/client setup, clean-fit booking, approval requests, replies, operation lookup and atomic change recording | Committed locally as `951f663`; activation disabled |
 | 3. CRM connection | Server API client, task form fields and review, guarded task creation/reassignment, linked task display | CRM commit `9bf346b`; activation disabled |
 | 4. Synchronization and recovery | Durable submissions, background changes polling, owner decisions and edits reflected in CRM, retry/reconciliation and notification coordination | Local checkpoint; CRM `5e88c15`; activation disabled |
-| 5. Complete verification and rollout | Two-application local scenarios, failure recovery, reviewed releases, controlled activation and rollback | Pending |
+| 5. Complete verification and rollout | Two-application local scenarios, failure recovery, reviewed releases, controlled activation and rollback | Local verification passed; release checklist prepared; hosted rollout pending |
 
 Each checkpoint ends with a reviewable diff, applicable checks and a local commit on the integration branch. Phase 2 is split so its read/preview API can be reviewed before introducing scheduling transactions. A local checkpoint does not demonstrate that the two deployed applications are connected. No CRM application code changes are included in Phases 1, 2a or 2b.
 
@@ -237,3 +237,29 @@ Daily maintenance expires abandoned CRM reviews after one day, deletes cancelled
 - Browser tests run the real CRM UI, gateway and worker with explicitly fictional adapters. SQL tests separately exercise actual functions in the isolated local ADA database, rolling the entire CRM schema back. The two actual local HTTP/auth/database stacks together are still **Phase 5**, including restart, credential rotation/revocation, protected-time and cross-system failure/release checks.
 
 Deploy Calendar's schema/API first, then CRM's compatible schema/server/UI, with activation disabled. CRM `deploy/calendar-sync.sql` must follow both `calendar-integration.sql` and the existing `my-day-emails.sql`; use each repository's existing reviewed migration path. In a later separately approved rollout, pin the connection and confirm mappings, enable enforcement with accepting paused, start sync and verify catch-up, then enable new assignments. Pause acceptance without dropping enforcement or history. No push, merge, production migration, deployment, activation or real send occurred in this checkpoint.
+
+
+## Phase 5: connected verification and release preparation — September 14
+
+Both actual local applications passed the connected integration suite against separate Supabase Auth/SQL stacks. The CRM's Phase 5 corrections are committed locally as `afa3d17`. No hosted rollout has occurred. The concrete release/activation/pause procedure is in [CRM_ROLLOUT.md](CRM_ROLLOUT.md).
+
+The test created a task through the real CRM form, gateway, verified CRM sign-in, Calendar HTTP API and scheduler, then confirmed matching persisted work in both databases and the Calendar browser. Owner changes reached the CRM through its actual background worker and realtime subscription. Further scenarios passed for due dates, conflict alternatives, original-requester replies, owner approval/decline, protected-time override, private unavailable blocks, title edits, completion/Undo/cancellation, simultaneous same-slot requests, duplicates and stale previews, lost commit responses, interrupted dispatch/atomic closure, restart/catch-up, credential rotation, disabled connections, banned CRM users, client/source protection, grandfathered tasks and notification ownership.
+
+The real HTTP test exposed two CRM issues that are now fixed: successful empty PostgREST maintenance responses were incorrectly reported as unavailable, and the production Docker allowlist omitted Calendar modules/UI helpers. The HTTP regression and actual production image now pass. Calendar scheduling/authorization code did not need to change in this phase.
+
+### Reproducible local harness
+
+`npm run test:crm-fullstack -- /absolute/path/to/ada-crm-calendar-integration` runs `scripts/crm-fullstack/run.mjs`. The release checklist documents prerequisites and isolation. The harness uses Calendar's existing isolated database on 5542x, creates/resets only the new disposable `ada-crm-integration-test` stack on 5552x, and launches the two real servers on reserved local ports 3193/3194. It refuses occupied application ports. Test-only transport maps synthetic service origins to loopback while retaining production validation; all Auth/REST/realtime responses and SQL functions are real. It does not call hosted Auth, AI or mail providers. The browser uses the locally installed Supabase SDK.
+
+Calendar fixtures use generated IDs and are removed after the test; cleanup verified zero generated owner accounts remained. The dedicated CRM stack was stopped afterward with its disposable data preserved. Existing ADA Calendar and SimplAssist containers were left running. App processes/browser contexts were closed, and private logs/screenshots remain in ignored test output. New test builds are excluded from Git, Docker and lint; the transport helper is excluded from the production container context.
+
+### Final verification
+
+- Calendar: **1,385 unit/contract tests in 72 files**, lint, type checking and optimized production build passed. The connected suite additionally exercised actual owner/API/scheduler/database boundaries. Earlier rollback-only SQL and scheduler race coverage remain passing as recorded in Phase 4.
+- CRM: **72 unit/contract tests**, seven desktop/mobile Chrome scenarios, rollback-only SQL assertions, production/artifact build and syntax checks passed after the fixes.
+- Both Docker production images built with Node 24. Calendar's network-disabled container suite passed unconfigured and runtime-configured modes, non-root runtime, private state, static assets and ffmpeg availability. CRM's network-disabled image served the new UI, required authentication and returned 404 for private modules/SQL files. No image was published.
+- Screenshots of the real CRM preview and Calendar booking were inspected. Captured browser workflows remained error-free. Calendar notifications stayed queued; linked tasks produced no duplicate active/sent CRM assignment mail.
+
+### Ready for release review
+
+Implementation and local integration verification are complete. The remaining work changes live systems: review the latest repository/deployment state, approve the paired release, deploy Calendar schema/API first, then CRM schema/server/UI, configure the real connection and mappings, verify hosted acceptance checks, and activate deliberately. Pushes, merges, hosted migrations, deployment approvals and real delivery have not been performed or bundled into the local checkpoint. Hosted acceptance cannot be claimed from local tests alone.

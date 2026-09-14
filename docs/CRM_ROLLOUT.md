@@ -1,0 +1,47 @@
+# ADA Calendar / CRM release checklist
+
+Prepared for the paired local integration branches. This is a reviewable release procedure, not a record of a production deployment. No live rollout step has been performed.
+
+## Review and release order
+
+1. Review both integration diffs against the latest main branches: Calendar `codex/crm-integration-foundation`, CRM `codex/calendar-integration`. Before merging, fetch both repositories and reconcile any intervening changes; rerun affected checks. Confirm the release commits, database destinations and current deployment settings. Preserve unrelated Calendar changes in `docs/RESUME.md` and `next-env.d.ts`.
+2. Keep Calendar's `ADA_CRM_INTEGRATION_ENABLED=false` and `ADA_CRM_BOOKING_ENABLED=false`. Keep CRM's `ADA_CALENDAR_ENABLED=false` and `ADA_CALENDAR_SYNC_ENABLED=false`; its new connection row installs with enforcement and acceptance false. Preserve existing email configuration until the controlled test window is agreed.
+3. Release Calendar first. Its existing Supabase GitHub integration is the recorded migration deployment path, while Railway builds the application. Apply the four ordered CRM migrations `202609140001`–`202609140004` through that path, then verify hosted migration history and successful Railway deployment. Do not also run a competing CLI migration push. A passing GitHub CI run does not establish migration success.
+4. Release the CRM schema and code after Calendar is ready. On the existing CRM database, confirm the earlier task identity/assigner and My Day migrations are present. Apply **only** the new `deploy/calendar-integration.sql`, followed by `deploy/calendar-sync.sql`, using CRM's existing reviewed SQL process. The latter requires the existing `my-day-emails.sql`. These are one-time migrations; never rerun the original schema/seed or overwrite the integration functions with an older notification script.
+5. Merge/push the reviewed CRM code and complete the agency's Railway deployment approval if its current account configuration requires it. Verify the new production image and `/healthz`, sign-in, existing task behavior and Resources/My Tasks. The recorded agency setup requires the Railway owner to click Deploy; check the actual pending deployment rather than inferring success from a GitHub push.
+
+The reviewed Docker images use Node 24. The CRM image must include the Calendar server modules and source helpers in its `.dockerignore` allowlist. Both builds exclude test fixtures and private environment files from the shipped runtime.
+
+## Connect while new assignments remain paused
+
+- In Calendar's owner-only CRM settings, create the disabled connection using the real CRM HTTPS origin, canonical Supabase Auth project URL, public/publishable key and agency domain. Copy the one-time connection credential directly into CRM's server-only Railway variables. A lost credential is replaced through Rotate key; do not create a second connection with a fresh identity/cursor to bypass recovery.
+- CRM needs its existing public Supabase settings plus `SUPABASE_SECRET_KEY` or its service-role fallback, `CRM_PUBLIC_ORIGIN`, `ADA_CALENDAR_URL`, and `ADA_CALENDAR_CREDENTIAL`. Private keys must not appear in `/config.js`, source control, task JSON, logs or browser storage. Browser sessions retain only their normal user sign-in token.
+- Use each CRM client's Copy Calendar client ID button or the authenticated paginated client directory. In Calendar, select and confirm the actual matching Calendar client. Review all clients involved in the pilot; a name/alias suggestion alone never authorizes a booking.
+- Enable the Calendar API flag and its owner-controlled connection while leaving booking disabled. Confirm authenticated connection/availability behavior and that anonymous/wrong-credential requests fail. Verify the displayed timezone and saved zero-minute interruption reserve without changing them.
+- At the announced activation window, set CRM enforcement true with acceptance false, then enable its sync flag. This starts the permanent protection for new Bryan assignments; acceptance stays paused until the next checks pass. Verify the connection UUID is pinned, the cursor catches up, the lease is released, and health is current. Enforcement cannot be turned off afterward. Existing grandfathered tasks remain editable.
+
+## Controlled activation and acceptance checks
+
+With both approved deployments verified, enable Calendar booking, CRM's assignment flag and CRM acceptance. Use agreed test tasks/users and captured or explicitly allowlisted notifications. Do not send test mail to other teammates. A live test of an assignment is a real calendar mutation and should use an agreed disposable task/open slot.
+
+Verify a clean-fit assignment appears once in both applications with the same sessions; a conflict offers alternatives and stays unbooked pending owner approval; only the original requester can reply; protected time requires an explicit owner override; and owner edits/completion/Undo return to CRM. Confirm legacy work still behaves normally, mappings cannot be bypassed, no duplicate assignment email is queued, and My Day includes scheduled work rather than approval requests. Confirm a CRM restart catches up without the requester staying signed in.
+
+Record the actual commits/deployment IDs, migration versions, connection identity (never the secret), pilot task IDs, observed cursor/last success, notification results and the person authorizing normal delivery. Local verification is complete; hosted DNS/TLS, credentials, deployment hooks and real delivery remain acceptance checks at release time.
+
+## Pause and recover
+
+**Stop new assignments:** set CRM acceptance false and/or its assignment flag false; Calendar booking can also be paused. Keep CRM enforcement, source records, credentials and sync enabled so existing work continues to update. Do not roll back to a CRM build that offers unchecked assignments after enforcement has been activated.
+
+**Broken connection or compromised key:** rotate the Calendar credential and replace the CRM server value, preserving the same connection UUID/cursor. Disable the Calendar connection if immediate revocation is needed; its change history continues accumulating for later catch-up. A two-minute stale warning is expected while reads are unavailable. Recover the original durable operations; never clear submissions or invent new IDs to bypass an uncertain outcome.
+
+**Application defect:** pause acceptance first, then deploy a compatible fix or previously verified integration build. Retain the additive schema. Database correction uses a reviewed forward migration or the established backup/restore procedure, never a production reset. A pre-integration build is not a safe bypass once enforcement is active. Do not delete links, closed-operation records or cursor history, or automatically recreate an owner-undone booking.
+
+## Local evidence and reproduction
+
+`npm run test:crm-fullstack -- /absolute/path/to/ada-crm-calendar-integration` runs both applications with real, separate local Auth/SQL services. Prerequisites are the project's locked npm dependencies, CRM's locked dependencies, Docker, Python, Chrome, the existing ADA local Supabase stack on 5542x, and `agent-browser` on PATH (or `ADA_AGENT_BROWSER_BIN` pointing to its installed executable).
+
+The harness creates/resets only the disposable `ada-crm-integration-test` stack on 5552x, whose configuration/migration copies live under `/private/tmp/ada-crm-fullstack-local`. It never resets the existing Calendar database or another project's stack. Calendar fixtures use random IDs and are removed afterward. CRM fixture data remains in its separate disposable stack until the next reset; it can be stopped using the CLI with that exact workdir.
+
+Test-only Node/browser transport maps synthetic HTTPS service addresses to loopback, preserving the production origin/Auth validation rules. Auth, REST, realtime, scheduling and database functions execute normally. Browser tests serve the installed Supabase SDK locally. No hosted request, sign-in email, AI request or real notification delivery is used. The test transport is outside the production runtime and has no production enable switch. Fault injection drops an actual completed response or blocks one dispatch to verify recovery.
+
+Screenshots and private app logs are under ignored `test-results/crm-fullstack`; the CLI's private local status log is in the temporary stack directory. Never publish logs containing credentials. The suite verifies browser booking in both systems, due dates, conflicts/alternatives, requester/owner boundaries, live realtime updates, approval/decline, protected overrides, private time, completion/Undo/cancellation, concurrency/staleness, lost acknowledgements, settlement, restart/catch-up, rotation/revocation, source retention and queued-only notification ownership.
