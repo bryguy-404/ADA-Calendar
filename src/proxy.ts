@@ -7,7 +7,8 @@ export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const isDemo = process.env.NODE_ENV !== "production" && process.env.ADA_DEMO_MODE === "true";
-  if (isDemo || !url || !key || request.nextUrl.pathname === "/api/email/webhook") return response;
+  if (isDemo || !url || !key || request.nextUrl.pathname === "/api/email/webhook"
+    || request.nextUrl.pathname.startsWith("/api/integrations/crm/v1/")) return response;
   const appUrl = new URL(process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? request.url);
   const origin = request.headers.get("origin");
   // Route handlers enforce mutation origins; do not rotate cookies for cross-origin traffic.

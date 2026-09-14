@@ -46,4 +46,8 @@ describe("Supabase session proxy", () => {
     await proxy(new NextRequest("https://ada.example.test/api/email/webhook", { method: "POST" }));
     expect(mocks.create).not.toHaveBeenCalled();
   });
+  it("leaves CRM machine authentication to its route without reading Calendar cookies", async () => {
+    await proxy(new NextRequest("https://ada.example.test/api/integrations/crm/v1/status", { headers: { cookie: "sb-fixture-auth-token=fixture" } }));
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
 });
