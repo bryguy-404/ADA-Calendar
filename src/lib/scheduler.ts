@@ -275,6 +275,15 @@ export function validateSchedule(snapshot: ScheduleSnapshot, now = new Date().to
 
 /** Planned work and capacity are whole-day totals. Availability is only the
  * still-bookable openings, using the same clock and increments as allocation. */
+export function dayOpenings(snapshot: ScheduleSnapshot, date: string, now = new Date().toISOString()): { start: string; end: string }[] {
+  const slot = snapshot.settings.slotMinutes;
+  return freeIntervals(snapshot, date, now, false).flatMap(part => {
+    const start = ceilToSlot(instantFromMs(part.start), date, snapshot.settings);
+    const minutes = Math.floor(duration({ start: instantMs(start), end: part.end }) / slot) * slot;
+    return minutes > 0 ? [{ start, end: addMinutes(start, minutes) }] : [];
+  });
+}
+
 export function dayCapacity(snapshot: ScheduleSnapshot, date: string, now = new Date().toISOString()): { plannedMinutes: number; availableMinutes: number; capacityMinutes: number } {
   if (!snapshot.settings.weekdays.includes(dayOfWeek(date))) return { plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 };
   const bounds = dayBounds(snapshot, date);
@@ -283,11 +292,7 @@ export function dayCapacity(snapshot: ScheduleSnapshot, date: string, now = new 
   const unavailable = [bounds.lunch, bounds.reserve, ...snapshot.blocks.map(range)];
   const capacityMinutes = subtract({ start: bounds.start, end: bounds.end }, unavailable).reduce((sum, part) => sum + duration(part), 0);
   const plannedMinutes = Math.max(0, sessions.reduce((sum, session) => sum + minutesBetween(session.start, session.end), 0) - reserveUsed);
-  const slot = snapshot.settings.slotMinutes;
-  const availableMinutes = freeIntervals(snapshot, date, now, false).reduce((sum, part) => {
-    const start = instantMs(ceilToSlot(instantFromMs(part.start), date, snapshot.settings));
-    return sum + Math.floor(duration({ start, end: part.end }) / slot) * slot;
-  }, 0);
+  const availableMinutes = dayOpenings(snapshot, date, now).reduce((sum, part) => sum + minutesBetween(part.start, part.end), 0);
   return { plannedMinutes, availableMinutes, capacityMinutes };
 }
 
@@ -1174,7 +1179,7 @@ export function planCommands(snapshot: ScheduleSnapshot, commands: WorkCommand[]
       }
     }
     if (errors.length) return fail(errors);
-    if (actor.role === "owner") {
+    if (actor.role === "owner" || actor.role === "requester") {
       // A precise owner placement authorizes ordinary displacement at that position.
       // Requester exact-slot collisions remain proposals, never implicit edits.
       const explicitSessions = draft.sessions.filter((session) => explicitIds.has(session.workItemId) && futureMinutes(session, now) > 0);
@@ -1184,6 +1189,14 @@ export function planCommands(snapshot: ScheduleSnapshot, commands: WorkCommand[]
           if (explicitIds.has(session.workItemId)) { errors.push(conflict("overlap", "Two explicitly requested work sessions overlap.", [fixed.workItemId, session.workItemId])); continue; }
           if (instantMs(session.start) < instantMs(now)) { errors.push(conflict("historical_session", "This placement overlaps another planned booking whose time has started. Move that booking explicitly first.", [session.workItemId])); continue; }
           if (session.protected && !protectedOverride(session.workItemId)) { errors.push(conflict("protected_session", "This placement would move protected work; explicitly override it.", [session.workItemId])); continue; }
+          if (actor.role === "requester") {
+            const other = snapshot.items.find(item => item.id === session.workItemId)!;
+            const reserved = snapshot.sessions.filter(prior => prior.workItemId === other.id).reduce((sum, prior) => sum + futureMinutes(prior, now), 0);
+            if (other.remainingMinutes === null || reserved < Math.ceil(other.remainingMinutes / draft.settings.slotMinutes) * draft.settings.slotMinutes) {
+              errors.push(conflict("partial_booking_displacement", "Move this project's bookings explicitly before using their time; its chosen booked hours cannot be automatically reconstructed.", [other.id]));
+              continue;
+            }
+          }
           if (session.protected) replacementProtected.add(session.workItemId);
           removeFutureSession(draft, session, now);
           scheduleIds.add(session.workItemId); forcedDisplacedIds.add(session.workItemId);
@@ -1231,7 +1244,7 @@ export function planCommands(snapshot: ScheduleSnapshot, commands: WorkCommand[]
     const requester = actor.role === "requester";
     const displacedIds = new Set<string>(forcedDisplacedIds);
     const settledIds = new Set<string>();
-    let requiresApproval = false;
+    let requiresApproval = requester && forcedDisplacedIds.size > 0;
     for (let cursor = 0; cursor < queue.length; cursor++) {
       const item = queue[cursor];
       // Explicitly completing one daily booking releases it; it does not book

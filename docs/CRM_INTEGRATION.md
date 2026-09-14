@@ -8,13 +8,14 @@ Both applications keep their own repositories and deployments. Build Calendar's 
 
 | Phase | Deliverable | Checkpoint |
 | --- | --- | --- |
-| 1. Secure foundation | Connection authentication, verified CRM requester identity, private source and operation records, connection check | Implemented locally; integration disabled |
-| 2. Calendar scheduling API | Owner connection/client setup, capacity and previews, clean-fit booking, approval requests, replies, operation lookup and atomic change recording | Next |
+| 1. Secure foundation | Connection authentication, verified CRM requester identity, private source and operation records, connection check | Committed locally as `a645fc5`; integration disabled |
+| 2a. Availability and previews | Public workload projection, shared-scheduler fit/impact previews, alternatives and private expiring preview records | Implemented locally; booking disabled |
+| 2b. Calendar scheduling transactions | Owner connection/client setup, clean-fit booking, approval requests, replies, operation lookup and atomic change recording | Next |
 | 3. CRM connection | Server API client, task form fields and review, guarded task creation/reassignment, linked task display | Pending |
 | 4. Synchronization and recovery | Durable submissions, background changes polling, owner decisions and edits reflected in CRM, retry/reconciliation and notification coordination | Pending |
 | 5. Complete verification and rollout | Two-application local scenarios, failure recovery, reviewed releases, controlled activation and rollback | Pending |
 
-Each phase ends with a reviewable diff and its applicable checks. A foundation checkpoint does not demonstrate that the two deployed applications are connected. No CRM application code changes are included in Phase 1.
+Each checkpoint ends with a reviewable diff, applicable checks and a local commit on the integration branch. Phase 2 is split so its read/preview API can be reviewed before introducing scheduling transactions. A local checkpoint does not demonstrate that the two deployed applications are connected. No CRM application code changes are included in Phase 1 or 2a.
 
 ## Product decisions retained from the plan
 
@@ -48,7 +49,7 @@ Successful response:
   "apiVersion": "1",
   "status": "authenticated",
   "bookingEnabled": false,
-  "capabilities": ["connection_check"]
+  "capabilities": ["connection_check", "availability", "previews"]
 }
 ```
 
@@ -85,13 +86,23 @@ The private change-append helper updates the connection sequence and inserts the
 
 No real connections, accounts or client mappings are seeded. The migration does not modify stored workspace settings, sessions, pending requests or events.
 
+## Phase 2a: availability and review API
+
+- `GET /api/integrations/crm/v1/availability?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD` returns up to 31 days of shared-scheduler capacity, usable future openings, booked work titles/clients/times, and generic unavailable ranges. It uses the workspace timezone and persisted settings, includes every session in a coherent database snapshot, and does not count unbooked spans as occupied time. Old planned work stays planned after its scheduled time passes.
+- `POST /api/integrations/crm/v1/previews` accepts the strict task input contract and requires a confirmed client mapping. It supports day, exact-time and firm/flexible due-date requests. It returns `fits`, `needs_approval`, or `cannot_fit`, proposed times, affected work before/after, safe conflict explanations and up to three clean-fit alternatives. A later alternative explicitly marks whether the firm deadline must change. Selecting an alternative requires a new preview.
+- Every response still says `bookingEnabled: false`. A fit is a preview, not a reservation or an accepted task. No booking or request-submission endpoint is implemented in this checkpoint.
+- The shared scheduler now computes ordinary exact-time displacement for a requester as an approval proposal. Passing `approveDisplacement` cannot approve it for a requester. Protected, already-started, unknown-total and partially booked conflicts require explicit owner handling. Ordinary Calendar SQL authorization remains unchanged and continues to reject requester edits and technical-principal scheduling.
+- Public responses are explicit field projections. They omit source descriptions, aliases, internal commands/fingerprints, block IDs/reasons, personal notes, drafts, transcripts, attachments and credentials. Both routes require the same service-plus-verified-teammate authentication as the connection check. Invalid or oversized bodies are bounded and sanitized; stalled uploads are cancelled after eight seconds.
+- Migration `202609140002_crm_availability_previews.sql` adds a versioned client mapping and a private immutable `crm_previews` record. Each record binds the connection, verified human, source task/client, mapping revision, workspace version, normalized input, generated requester command, review fingerprint and a 15-minute expiry. SQL rejects stale workspace/mapping versions or invalid clocks before saving. API callers receive 409 and must request a fresh preview; the server does not silently regenerate it.
+- Preview records are not exposed to browser roles and the service role cannot directly update/delete them. No schedule, task-link, request, event, email or workspace setting is written by previewing. Phase 2b must recheck the saved identity, mapping revision, expiry and freshly recomputed fingerprint before any actual booking. Expired-preview retention/cleanup belongs with the synchronization/recovery work in Phase 4.
+
 ## Remaining implementation requirements
 
 ### Calendar API and approval flow
 
-- Expose availability, previews, bookings, requests, replies and operation lookup under the versioned API base. Accept task requests, never caller-supplied schedule snapshots, actor roles or override commands. `src/lib/crm-integration.ts` holds the initial strict input contract.
+- Availability and preview endpoints are implemented in Phase 2a. Add bookings, requests, replies and operation lookup under the versioned API base. Continue accepting task requests, never caller-supplied schedule snapshots, actor roles or override commands. `src/lib/crm-integration.ts` holds the strict input and public response contracts.
 - Add owner-only connection provisioning/rotation/disable and mapping confirmation. Create the banned technical identity through trusted Auth administration without invitation mail. Do not enable a production connection as part of a migration.
-- Use the shared scheduler for every fit, alternative and displacement preview. Include all saved blocks/reserve and usable future capacity. Extend exact-time conflict explanations where necessary.
+- Reuse the Phase 2a shared-scheduler adapter for every fresh fit and impact calculation; retain its public-field projection, blocks/reserve and usable-future-capacity rules.
 - Previews expire after 15 minutes. Bind them to the verified requester, normalized input, mappings, workspace version, review fingerprint and relevant clock state. Recheck at commit. Return 409 for stale/changed intent, with no automatic authorization to replan and commit something different.
 - Make clean-fit work/request creation and durable operation finalization atomic. Preserve requester-only new-work validation and all existing owner approval/protected-time rules.
 - Record linked changes for every relevant Calendar owner action and approval outcome, including edits, completion, cancellation and Undo. Retain the source relationship after an approval becomes booked work.
@@ -117,10 +128,17 @@ Configure both existing live environments, confirm client mappings and run a con
 
 For rollback, disable new integrated submissions and the connection as appropriate, show an explicit unavailable/pending state, and preserve existing linked bookings and operation history. Never fall back to unchecked local CRM booking when Calendar is unavailable. Reconcile outstanding submissions and catch up the change cursor when service resumes. Do not drop the integration tables or run a down migration that destroys links.
 
-## Local verification checkpoint — September 14
+## Phase 1 verification — September 14
 
 - Foundation migration applied only to the isolated local ADA Supabase database.
 - `npm run test:crm-db`: rollback-only SQL fixtures prove private grants, technical principal isolation, owner-confirmed mappings, source attribution, operation replay checks, final-result immutability, ordered changes/rollback, credential budget/disable behavior and unchanged workspace settings/bookings. It sends no mail and refuses to target anything except `supabase_db_ada-calendar`.
 - `npm test`: **1,329 tests passed in 66 files**. `npm run lint`, `npm run typecheck`, and the optimized `npm run build` passed. The build initially hit a sandbox port restriction; after moving aside the cached compiler failure, the permitted fresh build passed with the new status route included.
 - Unit tests mock CRM Auth and the connection repository; no real agency credentials or real CRM sessions are used. End-to-end two-application and hosted verification remain pending.
 - No UI changed in this phase. No live feature flag, remote migration, real booking, email, GitHub push or deployment is included.
+
+## Phase 2a verification — September 14
+
+- Local migration applied to `supabase_db_ada-calendar` only. `npm run test:crm-db` runs both rollback-only suites, covering private reads/previews, all 1,001 historical fixture sessions, identity binding, mapping revisions, expiry, stale rejection, revocation, and unchanged Calendar data with no outgoing mail.
+- Planner/route/repository tests cover working hours, zero and nonzero saved reserve, lunch, weekends, elapsed work, private-data filtering, multi-day effort, exact-time displacement/approval, explicit-owner conflicts, firm/flexible dates and alternatives, schema/authentication failures, bounded/stalled uploads and no automatic stale retry. CRM Auth and repository calls are mocked in unit tests; complete two-application verification is still pending.
+- **1,352 tests passed in 69 files**, along with lint, type checking and the optimized production build. Both local SQL suites passed. The build includes the status, availability and preview routes. No UI changed. Existing unrelated edits in `docs/RESUME.md` and `next-env.d.ts` stay outside the integration commits.
+- Next checkpoint: Phase 2b's owner setup and atomic booking/request path, with the integration still disabled until the coordinated rollout.

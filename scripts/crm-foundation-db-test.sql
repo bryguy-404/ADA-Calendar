@@ -74,10 +74,10 @@ begin
   reset role;
 
   -- Owner-confirmed mappings must refer to this connection's workspace and client.
-  perform pg_temp.must_fail(format('insert into public.crm_client_mappings values(%L,%L,''crm-client'',''calendar-client'',%L,now())',integration,workspace,requester_id),'Only the active Calendar owner');
-  perform pg_temp.must_fail(format('insert into public.crm_client_mappings values(%L,%L,''crm-client'',''unknown'',%L,now())',integration,workspace,owner_id),'does not exist');
-  perform pg_temp.must_fail(format('insert into public.crm_client_mappings values(%L,%L,''crm-client'',''calendar-client'',%L,now())',integration,other_workspace,owner_id),'Only the active Calendar owner');
-  insert into public.crm_client_mappings values(integration,workspace,'crm-client','calendar-client',owner_id,now());
+  perform pg_temp.must_fail(format('insert into public.crm_client_mappings(integration_id,workspace_id,external_client_id,calendar_client_id,confirmed_by,confirmed_at) values(%L,%L,''crm-client'',''calendar-client'',%L,now())',integration,workspace,requester_id),'Only the active Calendar owner');
+  perform pg_temp.must_fail(format('insert into public.crm_client_mappings(integration_id,workspace_id,external_client_id,calendar_client_id,confirmed_by,confirmed_at) values(%L,%L,''crm-client'',''unknown'',%L,now())',integration,workspace,owner_id),'does not exist');
+  perform pg_temp.must_fail(format('insert into public.crm_client_mappings(integration_id,workspace_id,external_client_id,calendar_client_id,confirmed_by,confirmed_at) values(%L,%L,''crm-client'',''calendar-client'',%L,now())',integration,other_workspace,owner_id),'Only the active Calendar owner');
+  insert into public.crm_client_mappings(integration_id,workspace_id,external_client_id,calendar_client_id,confirmed_by,confirmed_at) values(integration,workspace,'crm-client','calendar-client',owner_id,now());
   perform pg_temp.must_fail(format('insert into public.crm_task_links(integration_id,workspace_id,external_task_id,external_client_id,calendar_client_id,work_item_id,requester_subject,requester_email) values(%L,%L,''fixture-task'',''crm-client'',''calendar-client'',''missing-work'',%L,%L)',integration,workspace,source_user,email),'must exist');
   insert into public.crm_task_links(integration_id,workspace_id,external_task_id,external_client_id,calendar_client_id,work_item_id,requester_subject,requester_email)
     values(integration,workspace,'fixture-task','crm-client','calendar-client','fixture-work',source_user,email);

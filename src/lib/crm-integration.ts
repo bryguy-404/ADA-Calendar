@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { dateSchema, idSchema } from "./schemas";
+import { addDays, isDate } from "./time";
 
 export const CRM_API_VERSION = "1" as const;
 export const CRM_PREVIEW_TTL_MINUTES = 15;
@@ -71,5 +72,34 @@ export interface CrmStatus {
   apiVersion: typeof CRM_API_VERSION;
   status: "authenticated";
   bookingEnabled: false;
-  capabilities: readonly ["connection_check"];
+  capabilities: readonly ("connection_check" | "availability" | "previews")[];
+}
+
+export const crmAvailabilityQuerySchema = z.object({ startDate: dateSchema, endDate: dateSchema }).strict()
+  .refine(value => !isDate(value.startDate) || !isDate(value.endDate) || value.endDate >= value.startDate && value.endDate <= addDays(value.startDate, 30), "Choose a range of up to 31 days.");
+export interface CrmTimeRange { start: string; end: string }
+export interface CrmVisibleWork {
+  workItemId: string; title: string; client: { id: string; name: string };
+  sessions: CrmTimeRange[];
+}
+export interface CrmAvailability {
+  apiVersion: "1"; bookingEnabled: false; timeZone: string; asOf: string; baseVersion: number;
+  days: {
+    date: string; capacityMinutes: number; plannedMinutes: number; availableMinutes: number;
+    openings: CrmTimeRange[]; work: CrmVisibleWork[];
+    unavailable: (CrmTimeRange & { title: "Unavailable" })[];
+  }[];
+}
+export interface CrmPreview {
+  apiVersion: "1"; previewId: string; bookingEnabled: false; timeZone: string;
+  createdAt: string; expiresAt: string; baseVersion: number;
+  status: "fits" | "needs_approval" | "cannot_fit";
+  task: { externalTaskId: string; title: string; client: { id: string; name: string }; estimatedMinutes: number; scheduling: CrmTaskInput["scheduling"] };
+  proposedSessions: CrmTimeRange[];
+  changes: (Omit<CrmVisibleWork, "sessions"> & { before: CrmTimeRange[]; after: CrmTimeRange[] })[];
+  conflicts: { code: string; message: string }[];
+  alternatives: {
+    scheduling: CrmTaskInput["scheduling"]; sessions: CrmTimeRange[];
+    requiresDateChange: boolean; requiresDeadlineChange: boolean;
+  }[];
 }

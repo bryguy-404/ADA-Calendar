@@ -268,8 +268,11 @@ describe("requester authority and collision previews", () => {
     const recomputed = planCommands(committed, [secondCommand], requester, { now: NOW });
     expect(recomputed.baseVersion).toBe(8);
     expect(recomputed.status).toBe("approval_required");
-    expect(recomputed.sessions).toEqual(committed.sessions);
-    expect(recomputed.conflicts.some((entry) => entry.code === "overlap")).toBe(true);
+    expect(recomputed.requiresApproval).toBe(true);
+    expect(recomputed.sessions.find(entry => entry.workItemId === "first")?.start).toBe(localDateTime(DAY, "09:30", zone));
+    expect(recomputed.conflicts.some((entry) => entry.code === "displacement_approval")).toBe(true);
+    expect(committed.sessions).toEqual(first.sessions); // The impact is a proposal, never a committed move.
+    expect(planCommands(committed, [secondCommand], requester, { now: NOW, approveDisplacement: true }).requiresApproval).toBe(true);
   });
 
   it("cannot consume reserve through a supplied session", () => {
