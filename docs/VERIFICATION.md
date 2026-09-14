@@ -2,6 +2,11 @@
 
 This records evidence for the eight phases in [the approved blueprint](BLUEPRINT.md), not a claim that hosted services have been deployed. Sample clients, the demo parser, and captured notifications are deliberately isolated from live work.
 
+## Sticky month navigation — September 14, 2026
+
+- The month title, Previous/Next period, Today and view controls now stay beneath the sticky main header while scrolling the calendar. The date-selection panel and weekday labels follow below them; a measured toolbar height keeps the rows aligned as controls wrap or the viewport changes. All work retains its existing toolbar behavior.
+- ESLint, TypeScript, all **1,308 unit/server tests**, and the production build pass. All **11 calendar-selection browser scenarios** pass, including desktop/mobile sticky offsets, month navigation while scrolled, returning to the top, selection/cancellation, cross-month ranges and viewport resizing. Agent-browser inspection found no page errors, and the scrolled calendar was visually checked. Tests use isolated fictional work with live providers disabled; no database changes or production mutations were needed.
+
 ## Hours left before the workday ends — September 14, 2026
 
 - Available hours now use the scheduler's future openings and saved booking increments. Planned hours and daily/weekly capacity retain their whole-period meaning. Month, agenda, the focus panel, move/meeting previews and ADA's capacity answers share the calculation. A server-seeded client clock refreshes every 15 seconds and on focus/visibility changes; this changes no work records or persisted settings.

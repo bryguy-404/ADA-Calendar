@@ -167,6 +167,7 @@ export function Workspace({ initialState }: { initialState: AppState }) {
   const [view, setView] = useState<CalendarView>("month");
   const [section, setSection] = useState<Section>("calendar");
   const stickyHeaderRef = useRef<HTMLDivElement>(null);
+  const calendarToolbarRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const header = stickyHeaderRef.current;
     const main = header?.parentElement;
@@ -182,6 +183,21 @@ export function Workspace({ initialState }: { initialState: AppState }) {
     observer.observe(header);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    const main = stickyHeaderRef.current?.parentElement;
+    const toolbar = calendarToolbarRef.current;
+    if (!main || !toolbar || section !== "calendar") return;
+    const updateHeight = () => {
+      main.style.setProperty("--calendar-toolbar-height", `${toolbar.getBoundingClientRect().height}px`);
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(toolbar);
+    return () => {
+      observer.disconnect();
+      main.style.removeProperty("--calendar-toolbar-height");
+    };
+  }, [section]);
   const [notesVisited, setNotesVisited] = useState(false);
   const [categories, setCategories] = useState<Category[]>([
     "web",
@@ -795,7 +811,7 @@ export function Workspace({ initialState }: { initialState: AppState }) {
         >
           <div className="primary-column">
             {(section === "calendar" || section === "work") && (
-              <div className="calendar-toolbar">
+              <div ref={calendarToolbarRef} className={`calendar-toolbar${section === "calendar" ? " calendar-toolbar-sticky" : ""}`}>
                 <div className="date-navigation">
                   <h2>
                     {dateLabel(date, {
