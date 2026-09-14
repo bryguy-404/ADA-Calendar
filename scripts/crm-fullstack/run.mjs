@@ -133,7 +133,7 @@ async function main() {
     });
     await crmContext.addInitScript(({session})=>localStorage.setItem('sb-ada-crm-integration-auth-token',JSON.stringify(session)),{session});
     const page=await crmContext.newPage();await page.goto(crmOrigin);
-    await expect(page.getByRole('button',{name:'Toggle tasks'})).toBeVisible();
+    await expect(page.locator('[data-id="fullstack-client"]').getByRole('button',{name:'Toggle tasks'})).toBeVisible();
     const day=nextWorkDate(addDays(localDate(new Date().toISOString(),DEFAULT_SETTINGS.timeZone),2),DEFAULT_SETTINGS);
     const fault=value=>writeFileSync(faultFile,JSON.stringify(value),{mode:0o600});
     await exerciseFlows({cal,crm,requester,requesterId,otherId,otherSession,session,workspaceId,connectionId,owner,gateway,submit,sync,restartCrm,page,ownerContext,ownerOrigin,crmOrigin,day,outputDir,checked,sql,container,expect,calendarProcess,fault});

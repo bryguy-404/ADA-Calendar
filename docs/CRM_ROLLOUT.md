@@ -2,6 +2,14 @@
 
 Prepared for the paired local integration branches. This is a reviewable release procedure, not a record of a production deployment. No live rollout step has been performed.
 
+## September 14 prerelease review
+
+- Calendar's current canonical GitHub repository is `bryguy-404/ADA-Calendar` (the older `tito3288` references are historical). Hosted main remains `04f3765`. Railway's active deployment is `5234a683-084c-4397-bc37-253b023645dd`; the latest GitHub Supabase check succeeded. Read-only hosted SQL confirms all 15 existing migrations through `202609090006`, with the four integration migrations still pending. Saved hours remain 09:00–17:00, Indianapolis timezone, reserve 0. Neither new integration environment flag is set, so both are disabled.
+- CRM main advanced to `756aff3` with internal company tasks. Its recorded Railway deployment `580f9aaf-f017-4bb7-8dd6-74284b0bdf6a` reports success. The integration branch incorporates that change, retaining internal company visibility without revenue/client editors, Calendar client mapping, and locked linked tasks. Verify whether its `internal-companies.sql` has been applied before the CRM database release; do not reseed an existing production database.
+- The combined CRM passes its build/syntax check, 78 tests, rollback-only SQL checks (including internal companies), seven browser scenarios, and a Node 24 Docker build. The full real two-app suite passes again, including unmapped internal task rejection, direct-write protection, owner-confirmed mapping and a browser booking that appears once in both databases. These are local fixtures and captured notifications only.
+- Calendar main had five existing browser CI failures. Corrected tests account for elapsed time, the server-seeded date versus the browser's fixed fixture date, hydration before the controlled demo-role selection, and cross-week drag events. All 32 affected browser scenarios pass; lint/typecheck pass. No Calendar application or scheduler behavior changed in these corrections.
+- The current Supabase login can access Calendar but receives a 403 on CRM project `lyopwmiybrhmxbmjjopv`. CRM schema installation awaits an invitation for Bryan's existing Supabase account or installation by the CRM's authorized database owner. This requires collaboration access to the existing database, not a database transfer, another hosted database, or sharing the owner's password. CRM production has not been modified by this review.
+
 ## Review and release order
 
 1. Review both integration diffs against the latest main branches: Calendar `codex/crm-integration-foundation`, CRM `codex/calendar-integration`. Before merging, fetch both repositories and reconcile any intervening changes; rerun affected checks. Confirm the release commits, database destinations and current deployment settings. Preserve unrelated Calendar changes in `docs/RESUME.md` and `next-env.d.ts`.

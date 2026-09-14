@@ -62,7 +62,8 @@ test("mocked-provider UI regression: tomorrow-only work has no timeline ribbon t
   await page.getByRole("button", { name: "month", exact: true }).click();
 
   const calendar = page.getByLabel("Month workload calendar", { exact: true });
-  await expect(calendar.getByRole("button", { name: "Tuesday, September 8, 6.5h available, 0h planned", exact: true })).toBeVisible();
+  // At 10:20 AM, elapsed time and the next 15-minute start boundary leave 5h.
+  await expect(calendar.getByRole("button", { name: "Tuesday, September 8, 5h available, 0h planned", exact: true })).toBeVisible();
   await expect(calendar.getByRole("button", { name: "Wednesday, September 9, 3.5h available, 3h planned", exact: true })).toBeVisible();
   const ribbon = calendar.getByTitle("CIDWP · Homepage demo", { exact: true });
   await expect(ribbon).toHaveCount(1);

@@ -19,7 +19,7 @@ export async function exerciseFlows(h) {
   }
   // Create through the actual CRM UI. The request uses both actual Auth/REST services.
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.getByRole('button',{name:'Toggle tasks'}).click();
+  await page.locator('[data-id="fullstack-client"]').getByRole('button',{name:'Toggle tasks'}).click();
   const form=page.locator('[data-add]');await form.getByLabel('Task',{exact:true}).fill('FICTIONAL full-stack browser booking');
   await form.getByLabel('Owner',{exact:true}).selectOption('Bryan');await form.getByRole('button',{name:'Add Task'}).click();
   const dialog=page.locator('[aria-labelledby=calendarTitle]');await expect(dialog).toBeVisible();
@@ -120,6 +120,36 @@ export async function exerciseFlows(h) {
   const unmapped=await gateway('previews',{submissionId:randomUUID(),kind:'create',task:{...input('FICTIONAL unmapped'),externalClientId:'unmapped'}});assert.notEqual(unmapped.status,200);
   const publicState=await state();assert.doesNotMatch(JSON.stringify(publicState),/ada_crm_v1_/);
   console.log('PASS: direct-write protection, retained client/source history, old-task behavior and client mismatch.');
+
+  // Internal companies added on CRM main use the same mapping and scheduling boundary.
+  const internalId='internal-alpha-dog-agency';
+  assert.ok((await requester.from('tasks').insert({id:'fullstack-internal-bypass',client_id:internalId,title:'Unchecked internal',owner:'Bryan'})).error);
+  const internalInput={...input('FICTIONAL internal company task'),externalClientId:internalId};
+  assert.notEqual((await gateway('previews',{submissionId:randomUUID(),kind:'create',task:internalInput})).status,200);
+  await owner('admin/crm',{type:'map',connectionId,externalClientId:internalId,calendarClientId:'fullstack-client'});
+  await page.reload();
+  const internalPanel=page.locator('[data-id="'+internalId+'"]');
+  await internalPanel.getByRole('button',{name:'Toggle tasks'}).click();
+  await expect(internalPanel.getByRole('button',{name:'Copy Calendar client ID'})).toBeVisible();
+  await expect(internalPanel.locator('[data-remove-client], [name=mrr]')).toHaveCount(0);
+  const internalForm=internalPanel.locator('[data-add]');
+  await internalForm.getByLabel('Task',{exact:true}).fill(internalInput.title);
+  await internalForm.getByLabel('Owner',{exact:true}).selectOption('Bryan');
+  await internalForm.getByRole('button',{name:'Add Task'}).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Estimated hours').fill('0.25');
+  await dialog.getByLabel('Schedule',{exact:true}).selectOption('day');
+  await dialog.locator('[name=date]').fill(nextWorkDate(addDays(blockedDay,1),DEFAULT_SETTINGS));
+  await dialog.getByRole('button',{name:'Check Calendar',exact:true}).click();
+  await expect(dialog.getByText('This task fits',{exact:true})).toBeVisible();
+  await dialog.getByRole('button',{name:'Book task',exact:true}).click();await expect(dialog).not.toBeVisible();
+  await sync();
+  const internalRows=checked(await crm.from('tasks').select('*').eq('title',internalInput.title));assert.equal(internalRows.length,1);
+  assert.equal(internalRows[0].client_id,internalId);assert.equal(internalRows[0].calendar.status,'planned');
+  assert.ok((await state()).items.some(item=>item.id===internalRows[0].calendar.workItemId));
+  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title}).locator('[data-done]')).toBeDisabled();
+  await page.screenshot({path:path.join(outputDir,'crm-internal-company-booking.png'),fullPage:true});
+  console.log('PASS: internal company tasks require owner mapping, book through the real Calendar API, and retain linked controls.');
 
   // Pause only new work; existing changes keep syncing, including after a worker restart.
   checked(await crm.from('calendar_connection').update({accepting:false}).eq('singleton',true));

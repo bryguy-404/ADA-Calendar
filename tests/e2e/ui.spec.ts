@@ -78,6 +78,11 @@ test("manual owner entry previews before saving, then supports explicit project 
 
 test("requester sees the shared plate with read-only details and can clean-fit book", async ({ page }) => {
   await page.goto("/");
+  // Wait for a client-rendered section before changing the server-rendered,
+  // controlled preview select; hydration can otherwise restore its old value.
+  await page.getByRole("button", { name: "All work", exact: true }).click();
+  await expect(page.getByLabel("Search work")).toBeVisible();
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
   await page.getByLabel("Preview as").selectOption("william");
   await expect(page.getByRole("heading", { name: "Bryan’s plate, at a glance." })).toBeVisible();
   await page.goto("/?work=drive-software");

@@ -37,6 +37,9 @@ async function prepare(page: Page, width = 1440, role: "bryan" | "kyle" | "viewe
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await refreshed;
   await expect(page.getByTitle("Cedar Studio", { exact: true })).toHaveCount(1);
+  // The initial calendar date was hydrated from the real server clock; select
+  // the browser fixture's Today before checking ordinary Add work defaults.
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   return { requests, stored, fixture: () => fixture };
 }
 const day = (page: Page, name: string) => page.getByLabel("Month workload calendar", { exact: true }).getByRole("button", { name: new RegExp(`^${name},`) }).locator(".day-number");

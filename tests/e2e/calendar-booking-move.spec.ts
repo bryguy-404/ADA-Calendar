@@ -77,7 +77,16 @@ const handle = (page: Page, fixture: Fixture) => calendar(page).getByRole("butto
 
 async function drag(page: Page, fixture: Fixture) {
   await expect(booked(page, fixture)).toHaveAttribute("draggable", "true");
-  await booked(page, fixture).dragTo(day(page, fixture.target), { targetPosition: { x: 12, y: 12 } });
+  await day(page, fixture.target).scrollIntoViewIfNeeded();
+  const destination = await day(page, fixture.target).boundingBox();
+  expect(destination).not.toBeNull();
+  await booked(page, fixture).hover();
+  await page.mouse.down();
+  // Cross-week drops need actual movement through dragenter and dragover before
+  // releasing. A single jump can enter the new week without accepting the drop.
+  await page.mouse.move(destination!.x + 12, destination!.y + 12, { steps: 12 });
+  await page.mouse.move(destination!.x + 14, destination!.y + 14);
+  await page.mouse.up();
   const dialog = moveDialog(page);
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Confirm move", exact: true })).toBeEnabled();
