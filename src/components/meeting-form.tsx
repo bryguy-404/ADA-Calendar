@@ -6,6 +6,7 @@ import type { AppState, ScheduleProposal, UnavailableBlock, WorkSession } from "
 import { addDays, instantMs, localDate, localDateTime, minutesBetween } from "@/lib/time";
 import { dayCapacity } from "@/lib/scheduler";
 import { formatHours } from "@/lib/work";
+import { useCalendarClock } from "./calendar-clock";
 import { api, ApiError, dateLabel, Field, Modal, timeLabel } from "./ui";
 
 type Draft = { title: string; kind: UnavailableBlock["kind"]; date: string; endDate: string; start: string; end: string };
@@ -28,6 +29,7 @@ export function MeetingForm({ state, date, existing, onSaved, onCommitted, onClo
   onSaved: (state: AppState) => void; onCommitted: (state: AppState, date: string) => void; onClose: () => void;
 }) {
   const [zone] = useState(state.settings.timeZone);
+  const now = useCalendarClock();
   const owner = state.actor.role === "owner";
   const [id] = useState(() => existing?.id ?? crypto.randomUUID());
   const [draft, setDraft] = useState<Draft>(() => ({
@@ -179,8 +181,8 @@ export function MeetingForm({ state, date, existing, onSaved, onCommitted, onClo
       </div>)}</div> : review.proposal.status === "ready" && <p>Existing work stays at its saved times.</p>}
       {review.proposal.status === "ready" && <div className="meeting-capacity" aria-label="Work capacity after meeting">
         {[...impactedDays].sort().map(day => {
-          const before = dayCapacity(review.before, day);
-          const after = dayCapacity({ ...review.before, ...review.proposal }, day);
+          const before = dayCapacity(review.before, day, now);
+          const after = dayCapacity({ ...review.before, ...review.proposal }, day, now);
           return <p key={day}><strong>{dateLabel(day)}</strong><span>{formatHours(before.availableMinutes)} → {formatHours(after.availableMinutes)} left for work</span></p>;
         })}
         {minutesBetween(review.block.start, review.block.end) > 31 * 24 * 60 && <p className="micro muted">Capacity shown for the first 31 days and any days with moved work.</p>}

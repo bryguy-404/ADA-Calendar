@@ -6,6 +6,7 @@ import type { AppState, ScheduleProposal, WorkEvent } from "@/lib/types";
 import { CALENDAR_MOVE_PREFIX, calendarBookingMovePreview, calendarBookingMoveSourceUnavailableReason, calendarBookingMoveTargetUnavailableReason, latestCalendarBookingMove, type CalendarBookingMoveSelection } from "@/lib/calendar-booking-move";
 import { undoUnavailableReason } from "@/lib/undo";
 import { localDate } from "@/lib/time";
+import { useCalendarClock } from "./calendar-clock";
 import { api, ApiError, dateLabel, Modal, timeLabel } from "./ui";
 
 interface Props { state: AppState; selection: CalendarBookingMoveSelection | null; onClose: () => void; onState: (state: AppState) => void; onInteractionLockChange?: (locked: boolean) => void }
@@ -23,6 +24,7 @@ export function CalendarBookingMove(props: Props) {
 }
 
 function CalendarBookingMoveController({ state, selection, onClose, onState, onInteractionLockChange }: Props) {
+  const now = useCalendarClock();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [busy, setBusy] = useState<"preview" | "commit" | "undo" | "check" | null>(null);
   const [error, setError] = useState("");
@@ -165,7 +167,7 @@ function CalendarBookingMoveController({ state, selection, onClose, onState, onI
   }
   const matches = preview && selectionKey(preview.selection) === key;
   const reviewed = matches ? preview : null;
-  const details = reviewed && calendarBookingMovePreview(reviewed.state, reviewed.proposal, reviewed.selection);
+  const details = reviewed && calendarBookingMovePreview(reviewed.state, reviewed.proposal, reviewed.selection, now);
   const stale = reviewed && state.version !== reviewed.proposal.baseVersion;
   const lastMove = latestCalendarBookingMove(state);
   const undoReason = lastMove && undoUnavailableReason(state, lastMove, new Date().toISOString());

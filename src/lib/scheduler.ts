@@ -273,16 +273,21 @@ export function validateSchedule(snapshot: ScheduleSnapshot, now = new Date().to
   return errors;
 }
 
-export function dayCapacity(snapshot: ScheduleSnapshot, date: string): { plannedMinutes: number; availableMinutes: number; capacityMinutes: number } {
+/** Planned work and capacity are whole-day totals. Availability is only the
+ * still-bookable openings, using the same clock and increments as allocation. */
+export function dayCapacity(snapshot: ScheduleSnapshot, date: string, now = new Date().toISOString()): { plannedMinutes: number; availableMinutes: number; capacityMinutes: number } {
   if (!snapshot.settings.weekdays.includes(dayOfWeek(date))) return { plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 };
   const bounds = dayBounds(snapshot, date);
-  const dayStart = instantFromMs(bounds.start);
   const sessions = snapshot.sessions.filter((session) => activeSession(session) && localDate(session.start, snapshot.settings.timeZone) === date);
   const reserveUsed = Math.min(snapshot.settings.reserveMinutes, sessions.filter((session) => session.usesReserve).reduce((sum, session) => sum + minutesBetween(session.start, session.end), 0));
   const unavailable = [bounds.lunch, bounds.reserve, ...snapshot.blocks.map(range)];
   const capacityMinutes = subtract({ start: bounds.start, end: bounds.end }, unavailable).reduce((sum, part) => sum + duration(part), 0);
   const plannedMinutes = Math.max(0, sessions.reduce((sum, session) => sum + minutesBetween(session.start, session.end), 0) - reserveUsed);
-  const availableMinutes = Math.min(Math.max(0, capacityMinutes - plannedMinutes), freeIntervals(snapshot, date, dayStart, false).reduce((sum, part) => sum + duration(part), 0));
+  const slot = snapshot.settings.slotMinutes;
+  const availableMinutes = freeIntervals(snapshot, date, now, false).reduce((sum, part) => {
+    const start = instantMs(ceilToSlot(instantFromMs(part.start), date, snapshot.settings));
+    return sum + Math.floor(duration({ start, end: part.end }) / slot) * slot;
+  }, 0);
   return { plannedMinutes, availableMinutes, capacityMinutes };
 }
 

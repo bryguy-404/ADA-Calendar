@@ -40,7 +40,7 @@ export function latestCalendarBookingMove(state: AppState) {
     .sort((a, b) => b.version - a.version)[0];
 }
 
-export function calendarBookingMovePreview(state: AppState, proposal: ScheduleProposal, selection: CalendarBookingMoveSelection) {
+export function calendarBookingMovePreview(state: AppState, proposal: ScheduleProposal, selection: CalendarBookingMoveSelection, now = new Date().toISOString()) {
   const command = proposal.commands[0];
   if (proposal.actorId !== state.actor.id || proposal.baseVersion !== state.version || proposal.commands.length !== 1 || command?.type !== "move_bookings" || command.date !== selection.date ||
     [...command.sessionIds].sort().join("\n") !== [...selection.sessionIds].sort().join("\n")) return null;
@@ -67,5 +67,5 @@ export function calendarBookingMovePreview(state: AppState, proposal: SchedulePr
   const sourceDate = localDate(sources[0].start, state.settings.timeZone);
   const dates = [...new Set([sourceDate, selection.date])].sort();
   return { before: sources, after, minutes, title: item?.title ?? "Work", clientName: state.clients.find(client => client.id === item?.clientId)?.name ?? "Client",
-    days: dates.map(date => ({ date, before: dayCapacity(state, date), after: dayCapacity({ ...state, ...proposal }, date) })) };
+    days: dates.map(date => ({ date, before: dayCapacity(state, date, now), after: dayCapacity({ ...state, ...proposal }, date, now) })) };
 }

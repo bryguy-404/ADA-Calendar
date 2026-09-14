@@ -1,6 +1,7 @@
 import { currentActor, demoEnabled, store } from "@/lib/server/service";
 import { Workspace } from "@/components/workspace";
 import { SignIn } from "@/components/sign-in";
+import { CalendarClockProvider } from "@/components/calendar-clock";
 
 export const dynamic = "force-dynamic";
 export default async function Page() {
@@ -19,5 +20,5 @@ export default async function Page() {
   } catch {
     return <SignIn />;
   }
-  return <Workspace initialState={state} />;
+  return <CalendarClockProvider initialNow={new Date().toISOString()}><Workspace initialState={state} /></CalendarClockProvider>;
 }

@@ -28,7 +28,7 @@ describe("fixed meetings and work capacity", () => {
     expect(reserved.sessions).toEqual([]);
     expect(reserved.summary).toEqual(["Added meeting: Fictional client review."]);
     const occupied = { ...base, blocks: reserved.blocks };
-    expect(dayCapacity(occupied, tomorrow)).toEqual({ plannedMinutes: 0, capacityMinutes: 390, availableMinutes: 390 });
+    expect(dayCapacity(occupied, tomorrow, now)).toEqual({ plannedMinutes: 0, capacityMinutes: 390, availableMinutes: 390 });
     const work = newWorkItem(owner, tomorrow, { id: "work", clientId: "client", title: "Fictional work", estimatedMinutes: 450, remainingMinutes: 450, minimumSessionMinutes: 15 });
     const proposal = planCommands(occupied, [{ type: "create", item: work, smartFit: { startDate: tomorrow, endDate: "2026-09-11", minutes: 450, distribution: "total" } }], owner, { now });
     expect(proposal.status).toBe("ready");

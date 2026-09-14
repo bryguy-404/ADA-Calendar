@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDemoState, DEMO_MEMBERS } from "./fixtures";
 import { newWorkItem } from "./work";
 import { localDateTime } from "./time";
+import { dayCapacity } from "./scheduler";
 import type { ScheduleProposal, WorkCommand } from "./types";
 
 // Isolated fictional storage and captured notifications; no live providers.
@@ -52,6 +53,26 @@ beforeEach(async () => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.clearAllMocks(); });
 
 describe("explicit day completion through authenticated commands", () => {
+  it("keeps completion availability within the last hour and enforces it for requester bookings", async () => {
+    vi.setSystemTime(new Date(at(days[0], "16:00")));
+    expect((await commit(await preview("finish-at-four"))).status).toBe(200);
+    const saved = await getDemoState(owner);
+    expect(dayCapacity(saved, days[0])).toEqual({ capacityMinutes: 450, plannedMinutes: 0, availableMinutes: 60 });
+    vi.mocked(currentActor).mockResolvedValue(DEMO_MEMBERS[1]);
+    const create = (minutes: number): WorkCommand => ({ type: "create", item: newWorkItem(DEMO_MEMBERS[1], days[0], { id: "new-request", clientId: "fictional", title: "Fictional last-hour request", estimatedMinutes: minutes, remainingMinutes: minutes }), bookingWindow: { startDate: days[0], endDate: days[0] } });
+    const oversized = await send({ commands: [create(120)], operationId: "two-hours-at-four", action: "preview" });
+    expect(oversized.status).toBe(200);
+    expect((await oversized.json()).proposal.status).not.toBe("ready");
+    expect(await getDemoState(owner)).toEqual(saved);
+    const fitting = await preview("one-hour-at-four", [create(60)]);
+    expect(fitting.sessions.find(session => session.workItemId === "new-request")).toMatchObject({ start: at(days[0], "16:00"), end: at(days[0], "17:00") });
+    // An open preview cannot bypass the server clock when confirmed later.
+    vi.setSystemTime(new Date(at(days[0], "17:00")));
+    expect((await commit(fitting)).status).toBe(409);
+    expect(await getDemoState(owner)).toEqual(saved);
+    expect(dayCapacity(saved, days[0]).availableMinutes).toBe(0);
+    expect(saved.notifications.every(notification => notification.status === "captured")).toBe(true);
+  });
   it("previews without writes, completes only the chosen day, and decrements effort exactly once", async () => {
     const before = await getDemoState(owner), privateNotes = await notes(), proposal = await preview("finish-day-once");
     expect(proposal.items[0]).toMatchObject({ estimatedMinutes: 180, remainingMinutes: 120, status: "planned", completedAt: null });

@@ -46,6 +46,9 @@ async function setup(page: Page, width: number, mixedUnknown = false) {
   await page.goto("/");
   await page.getByRole("button", { name: "agenda", exact: true }).click();
   const refreshed = page.waitForResponse(`${origin}/api/state`); await page.evaluate(() => window.dispatchEvent(new Event("focus"))); await refreshed;
+  // The page now hydrates with the server's date. Select the browser fixture's
+  // simulated today explicitly before verifying agenda and timed views.
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByRole("button", { name: "month", exact: true }).click();
   return { before, actions, commands, current: () => fixture, changeFromAnotherTab: () => {
     fixture = structuredClone(fixture); fixture.version++;

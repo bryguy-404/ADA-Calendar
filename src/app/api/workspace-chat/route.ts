@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
       previous = readWorkspaceChatRecord(parent.result, actor, state, now);
     }
     const resolved = workspaceChatMessageDate(input.text, localDate(now, state.settings.timeZone), input.date ?? previous?.response.contextDate ?? previous?.turns.at(-1)?.date ?? localDate(now, state.settings.timeZone), previous);
-    const direct = deterministicChatAnswer(input.text, state, resolved.date, previous, localDate(now, state.settings.timeZone));
+    const direct = deterministicChatAnswer(input.text, state, resolved.date, previous, localDate(now, state.settings.timeZone), now);
     const notes = actor.role === "owner" && !direct && !resolved.error ? await listNotes(actor) : [];
     const context = !direct && !resolved.error ? workspaceChatContext(state, actor, notes, input.text, resolved.date, now) : undefined;
     if (context && !demoEnabled() && !process.env.OPENAI_API_KEY) throw new WorkspaceChatError("The AI helper is not connected. Your calendar has not changed. Daily agendas and weekly workload questions remain available.", 503);

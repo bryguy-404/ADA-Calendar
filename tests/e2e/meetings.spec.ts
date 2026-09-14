@@ -42,6 +42,8 @@ async function showDate(page: Page, snapshot: AppState, date: string, width = 14
   await page.clock.setFixedTime(new Date(localDateTime(date, "09:00", snapshot.settings.timeZone)));
   await page.goto("/");
   if (width <= 760) await expect(page.getByRole("button", { name: "agenda", exact: true })).toHaveClass(/active/);
+  // Initial rendering uses the server date; navigate to the simulated date.
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByRole("button", { name: "month", exact: true }).click();
   await expect(day(page, date)).toBeVisible();
   await page.getByRole("button", { name: "day", exact: true }).click();

@@ -81,7 +81,7 @@ describe("calendar move preview and persistent undo selection", () => {
     const state = fixture(), selection = { sessionIds: ["morning", "afternoon"], date: target };
     const proposal = planCommands(state, [{ type: "move_bookings", ...selection }], state.actor, { now, operationId: operation });
     expect(proposal.status, JSON.stringify(proposal.conflicts)).toBe("ready");
-    const details = calendarBookingMovePreview(state, proposal, selection);
+    const details = calendarBookingMovePreview(state, proposal, selection, now);
     expect(details?.before).toHaveLength(2); expect(details?.minutes).toBe(120);
     expect(details?.days.map(day => day.date)).toEqual([day, target]);
     expect(details?.days[0].after.availableMinutes).toBe(450);

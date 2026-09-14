@@ -50,16 +50,16 @@ describe("working-time arithmetic", () => {
 
   it("offers 390 ordinary minutes; project spans alone reserve nothing", () => {
     const base = snapshot([item("month-long software", 600, { category: "software", windowEnd: "2026-09-30" })]);
-    expect(dayCapacity(base, DAY)).toEqual({ plannedMinutes: 0, availableMinutes: 390, capacityMinutes: 390 });
-    expect(dayCapacity(base, "2026-09-12")).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
+    expect(dayCapacity(base, DAY, NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 390, capacityMinutes: 390 });
+    expect(dayCapacity(base, "2026-09-12", NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
   });
 
   it("offers 450 ordinary minutes when the workspace disables reserve, with weekends still closed", () => {
     const base = snapshot();
     base.settings.reserveMinutes = 0;
-    expect(dayCapacity(base, DAY)).toEqual({ plannedMinutes: 0, availableMinutes: 450, capacityMinutes: 450 });
-    expect(dayCapacity(base, "2026-09-12")).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
-    expect(dayCapacity(base, "2026-09-13")).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
+    expect(dayCapacity(base, DAY, NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 450, capacityMinutes: 450 });
+    expect(dayCapacity(base, "2026-09-12", NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
+    expect(dayCapacity(base, "2026-09-13", NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 0, capacityMinutes: 0 });
     expect(validateSchedule(base, NOW)).toEqual([]);
     expect(DEFAULT_SETTINGS.reserveMinutes).toBe(60);
   });
@@ -67,7 +67,7 @@ describe("working-time arithmetic", () => {
   it("deducts unavailable time once even when it overlaps lunch", () => {
     const base = snapshot();
     base.blocks.push({ id: "meeting", title: "Meeting", start: at("11:30"), end: at("13:00"), kind: "meeting" });
-    expect(dayCapacity(base, DAY)).toEqual({ plannedMinutes: 0, availableMinutes: 330, capacityMinutes: 330 });
+    expect(dayCapacity(base, DAY, NOW)).toEqual({ plannedMinutes: 0, availableMinutes: 330, capacityMinutes: 330 });
   });
 });
 
@@ -84,7 +84,7 @@ describe("deterministic effort allocation", () => {
       expect.objectContaining({ start: at("12:30", friday), end: at("17:00", friday), usesReserve: false }),
       expect.objectContaining({ start: at("09:00", "2026-09-14"), end: at("09:30", "2026-09-14"), usesReserve: false }),
     ]);
-    expect(dayCapacity(apply(base, result), friday)).toEqual({ plannedMinutes: 450, availableMinutes: 0, capacityMinutes: 450 });
+    expect(dayCapacity(apply(base, result), friday, NOW)).toEqual({ plannedMinutes: 450, availableMinutes: 0, capacityMinutes: 450 });
     expect(validateSchedule(apply(base, result), at("08:00", friday))).toEqual([]);
   });
 
@@ -92,9 +92,9 @@ describe("deterministic effort allocation", () => {
     const old = item("existing", 390, { forecastDate: DAY });
     const base = snapshot([old], [session(old.id, "09:00", "12:00", { protected: true }), session(old.id, "12:30", "16:00")]);
     const original = structuredClone(base);
-    expect(dayCapacity(base, DAY)).toEqual({ plannedMinutes: 390, availableMinutes: 0, capacityMinutes: 390 });
+    expect(dayCapacity(base, DAY, NOW)).toEqual({ plannedMinutes: 390, availableMinutes: 0, capacityMinutes: 390 });
     const updated = { ...base, settings: { ...base.settings, reserveMinutes: 0 } };
-    expect(dayCapacity(updated, DAY)).toEqual({ plannedMinutes: 390, availableMinutes: 60, capacityMinutes: 450 });
+    expect(dayCapacity(updated, DAY, NOW)).toEqual({ plannedMinutes: 390, availableMinutes: 60, capacityMinutes: 450 });
     const work = item("normal edit", 60, { deadline: DAY });
     const result = planCommands(updated, [{ type: "create", item: work }], actor, { now: NOW });
     expect(result.status).toBe("ready");
@@ -106,7 +106,7 @@ describe("deterministic effort allocation", () => {
     expect(sessionsFor(result, old.id)).toEqual(original.sessions);
     expect(result.items.find((entry) => entry.id === old.id)).toEqual(original.items[0]);
     expect(result.affectedItemIds).toEqual([work.id]);
-    expect(dayCapacity(apply(updated, result), DAY)).toEqual({ plannedMinutes: 450, availableMinutes: 0, capacityMinutes: 450 });
+    expect(dayCapacity(apply(updated, result), DAY, NOW)).toEqual({ plannedMinutes: 450, availableMinutes: 0, capacityMinutes: 450 });
     expect(validateSchedule(apply(updated, result), NOW)).toEqual([]);
     expect(base).toEqual(original);
   });
@@ -328,7 +328,7 @@ describe("interruptions and reserve accounting", () => {
     expect(result.items.find((entry) => entry.id === old.id)?.remainingMinutes).toBe(330);
     expect(result.items.find((entry) => entry.id === old.id)?.forecastDate).toBe(DAY);
     expect(validateSchedule(apply(base, result), at("10:00"))).toEqual([]);
-    expect(dayCapacity(apply(base, result), DAY)).toEqual({ plannedMinutes: 390, availableMinutes: 0, capacityMinutes: 390 });
+    expect(dayCapacity(apply(base, result), DAY, NOW)).toEqual({ plannedMinutes: 390, availableMinutes: 0, capacityMinutes: 390 });
   });
 
   it("never recovers reserve that already elapsed", () => {

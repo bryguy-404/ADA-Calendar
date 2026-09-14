@@ -48,6 +48,7 @@ import { CATEGORY_LABELS } from "@/lib/defaults";
 import { sortClientsByName } from "@/lib/clients";
 import { formatHours } from "@/lib/work";
 import { CalendarContent, type CalendarView } from "./calendar";
+import { useCalendarClock } from "./calendar-clock";
 import { DateSelectionActions } from "./date-selection-actions";
 import { api, ApiError, dateLabel, Empty, Field, Modal, timeLabel } from "./ui";
 import { WorkForm, ProposalCard } from "./work-form";
@@ -160,7 +161,8 @@ function DraftCard({
 }
 export function Workspace({ initialState }: { initialState: AppState }) {
   const [state, setState] = useState(initialState);
-  const today = localDate(new Date().toISOString(), state.settings.timeZone);
+  const now = useCalendarClock();
+  const today = localDate(now ?? new Date().toISOString(), state.settings.timeZone);
   const [date, setDate] = useState(today);
   const [view, setView] = useState<CalendarView>("month");
   const [section, setSection] = useState<Section>("calendar");
@@ -374,15 +376,15 @@ export function Workspace({ initialState }: { initialState: AppState }) {
     (s) => localDate(s.start, state.settings.timeZone) === focusDate,
   );
   const focusBlocks = upcomingBlocks.filter(block => localDate(block.start, state.settings.timeZone) <= focusDate && localDate(instantFromMs(instantMs(block.end) - 1), state.settings.timeZone) >= focusDate);
-  const focusCapacity = dayCapacity(state, focusDate);
+  const focusCapacity = dayCapacity(state, focusDate, now);
   const weekStart = addDays(date, 1 - dayOfWeek(date));
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const weekCapacity = weekDays.reduce(
-    (n, d) => n + dayCapacity(state, d).capacityMinutes,
+    (n, d) => n + dayCapacity(state, d, now).capacityMinutes,
     0,
   );
   const weekPlanned = weekDays.reduce(
-    (n, d) => n + dayCapacity(state, d).plannedMinutes,
+    (n, d) => n + dayCapacity(state, d, now).plannedMinutes,
     0,
   );
   const waiting = active.filter((i) => i.status === "waiting");

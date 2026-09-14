@@ -47,22 +47,31 @@ describe("workspace helper evidence and deterministic facts", () => {
   });
   it("answers daily agenda in actual clock order with correct capacity and no mutation", () => {
     const state = fixture(), before = structuredClone(state);
-    const answer = deterministicChatAnswer("What do I have to do today in order?", state, day)!;
-    expect(answer.intent).toBe("agenda"); expect(answer.reply.message).toContain("5h planned · 2.5h unbooked");
+    const answer = deterministicChatAnswer("What do I have to do today in order?", state, day, undefined, day, now)!;
+    expect(answer.intent).toBe("agenda"); expect(answer.reply.message).toContain("5h planned · 2.5h left to book");
     expect(answer.reply.message.indexOf("Oral Surgery")).toBeLessThan(answer.reply.message.indexOf("Tech Tyler"));
     expect(answer.reply.message).toContain("12:30 PM–2:30 PM");
     expect(state).toEqual(before);
   });
   it("answers weekly totals rather than inferring unknown effort or completed work", () => {
     const state = fixture(); state.items.push(newWorkItem(owner, day, { id: "unknown", clientId: "oral", status: "waiting", estimatedMinutes: null, remainingMinutes: null, windowEnd: "2026-12-31" }));
-    const answer = deterministicChatAnswer("How busy am I this week?", state, day)!;
-    expect(answer.reply.message).toContain("5h planned of 37.5h capacity (13% booked)"); expect(answer.reply.message).toContain("32.5h unbooked");
-    expect(answer.reply.message).toContain("not hours left after the current time");
+    const answer = deterministicChatAnswer("How busy am I this week?", state, day, undefined, day, now)!;
+    expect(answer.reply.message).toContain("5h planned of 37.5h capacity (13% booked)"); expect(answer.reply.message).toContain("17.5h left to book");
+    expect(answer.reply.message).toContain("Hours left exclude elapsed time");
     state.settings.reserveMinutes = 60;
     expect(deterministicChatAnswer("How busy am I this week?", state, day)!.reply.message).toContain("32.5h capacity");
     expect(deterministicChatAnswer("How busy am I this week?", state, "2026-09-23", undefined, day)!.reply.message).toContain("Week of Mon, Sep 7");
     expect(deterministicChatAnswer("How busy am I next week?", state, "2026-09-23", undefined, day)!.reply.message).toContain("Week of Mon, Sep 14");
     expect(deterministicChatAnswer("How busy am I that week?", state, "2026-09-23", undefined, day)!.reply.message).toContain("Week of Mon, Sep 21");
+  });
+  it("grounds daily and weekly availability in the supplied current time, including model context", () => {
+    const state = fixture(), clock = at("16:00");
+    expect(deterministicChatAnswer("What do I have to do today?", state, day, undefined, day, clock)!.reply.message).toContain("5h planned · 1h left to book");
+    expect(deterministicChatAnswer("How busy am I this week?", state, day, undefined, day, clock)!.reply.message).toContain("16h left to book");
+    const context = workspaceChatContext(state, owner, [], "What do I have to do today?", day, clock);
+    expect(context.data.dayFacts).toContain("1h left to book");
+    expect(context.data.weekFacts).toContain("16h left to book");
+    expect(compileWorkspaceChatIntent(intent("What do I have to do today?", { intent: "agenda" }), "What do I have to do today?", state, owner, day, clock, "capacity-clock", []).reply.message).toContain("1h left to book");
   });
   it("counts only saved active web builds, not notes, edits, or cancelled/completed builds", () => {
     const state = fixture();

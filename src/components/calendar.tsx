@@ -11,6 +11,7 @@ import { workDaySummary, workTimeline } from "@/lib/work-timeline";
 import { dateLabel, Empty, timeLabel } from "./ui";
 import { calendarBookingMoveSourceUnavailableReason, type CalendarBookingMoveSelection } from "@/lib/calendar-booking-move";
 import { useCalendarBookingDrag } from "./use-calendar-booking-drag";
+import { useCalendarClock } from "./calendar-clock";
 
 const TimedCalendar = dynamic(() => import("./timed-calendar"), {
   ssr: false,
@@ -50,9 +51,10 @@ export function MonthCalendar({
   onMoveBookings,
   movingBookings = false,
 }: Props) {
+  const now = useCalendarClock();
   const first = date.slice(0, 7) + "-01";
   const start = addDays(first, -(dayOfWeek(first) % 7));
-  const today = localDate(new Date().toISOString(), state.settings.timeZone);
+  const today = localDate(now ?? new Date().toISOString(), state.settings.timeZone);
   const canSelectDates = state.actor.role !== "viewer" && !movingBookings;
   const canMove = Boolean(onMoveBookings && state.actor.role === "owner" && !selectingDates && !movingBookings);
   const move = useCalendarBookingDrag(state, canMove, onMoveBookings);
@@ -162,7 +164,7 @@ export function MonthCalendar({
           >
             <div className="day-backgrounds">
               {days.map((d) => {
-                const capacity = dayCapacity(state, d);
+                const capacity = dayCapacity(state, d, now);
                 const isWorkday = state.settings.weekdays.includes(
                   dayOfWeek(d),
                 );
@@ -191,7 +193,7 @@ export function MonthCalendar({
                     aria-label={`${dateLabel(d, { weekday: "long", month: "long", day: "numeric" })}, ${isWorkday ? `${formatHours(capacity.availableMinutes)} available, ${formatHours(capacity.plannedMinutes)} planned` : "Non-working day"}`}
                     title={
                       isWorkday
-                        ? `${formatHours(capacity.availableMinutes)} left to book · ${formatHours(capacity.plannedMinutes)} planned · ${formatHours(capacity.capacityMinutes)} daily capacity. Lunch, interruption reserve and unavailable time are excluded.`
+                        ? `${formatHours(capacity.availableMinutes)} left to book · ${formatHours(capacity.plannedMinutes)} planned · ${formatHours(capacity.capacityMinutes)} daily capacity. Only future openings before the workday ends count, in ${state.settings.slotMinutes}-minute increments. Lunch, interruption reserve and unavailable time are excluded.`
                         : "Non-working day"
                     }
                   >
@@ -356,6 +358,7 @@ export function MonthCalendar({
   );
 }
 export function Agenda({ state, date, items, onSelect, onSelectBlock }: Props) {
+  const now = useCalendarClock();
   const sessions = state.sessions
     .filter(
       (s) =>
@@ -401,7 +404,7 @@ export function Agenda({ state, date, items, onSelect, onSelectBlock }: Props) {
           <h3>
             {dateLabel(d, { weekday: "long", month: "long", day: "numeric" })}
             <span>
-              {formatHours(dayCapacity(state, d).plannedMinutes)} work planned · {formatHours(dayCapacity(state, d).availableMinutes)} left
+              {formatHours(dayCapacity(state, d, now).plannedMinutes)} work planned · {formatHours(dayCapacity(state, d, now).availableMinutes)} left
             </span>
           </h3>
           {upcoming
