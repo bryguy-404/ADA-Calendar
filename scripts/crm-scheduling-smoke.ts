@@ -76,14 +76,37 @@ async function main() {
     assert.equal(race.filter(entry => entry.status === "fulfilled").length, 1);
     const loser = race.find(entry => entry.status === "rejected"); assert.ok(loser && loser.status === "rejected"); assert.equal(loser.reason.status, 409);
     assert.equal((await readCrmSchedule(context)).snapshot.items.length, 3);
+    // Recovery races the actual scheduler transaction. Either outcome is final for this ID.
+    loaded = await readCrmSchedule(context, input.externalClientId);
+    const recoveryPreview = prepareCrmPreview(context, loaded,
+      { ...input, externalTaskId: "recovery-race", scheduling: { mode: "exact", date: raceDay, startTime: "11:00" } }, randomUUID(), new Date().toISOString());
+    assert.equal(recoveryPreview.response.status, "fits"); await saveCrmPreview(context, recoveryPreview);
+    const recoveryIntent = { operationId: randomUUID(), previewId: recoveryPreview.response.previewId, note: "" };
+    const settleArgs = { p_integration_id: connectionId, p_credential_hash: issued.hash, p_operation_id: recoveryIntent.operationId };
+    const [attempt, settled] = await Promise.allSettled([
+      submitCrmTask(context, recoveryIntent, "booking"), db.rpc("settle_crm_operation", settleArgs).then(checked),
+    ]);
+    assert.equal(settled.status, "fulfilled");
+    const terminal = checked(await db.rpc("settle_crm_operation", settleArgs)).data;
+    assert.ok(["completed", "rejected"].includes(terminal.status));
+    if (terminal.status === "rejected") {
+      assert.equal(attempt.status, "rejected");
+      await assert.rejects(submitCrmTask(context, recoveryIntent, "booking"));
+      assert.equal((await readCrmSchedule(context)).snapshot.items.length, 3);
+    } else {
+      assert.equal(attempt.status, "fulfilled");
+      assert.equal((await readCrmSchedule(context)).snapshot.items.length, 4);
+      assert.deepEqual(await submitCrmTask(context, recoveryIntent, "booking"), terminal);
+    }
+    assert.equal(checked(await db.rpc("settle_crm_operation", { ...settleArgs, p_operation_id: intent.operationId })).data.status, "completed");
     const mail = checked(await db.from("notifications").select("status").eq("workspace_id", workspaceId)).data!;
     assert.ok(mail.length > 0); assert.ok(mail.every(entry => entry.status === "queued"));
-    console.log("PASS: real planner/repository/SQL booking, concurrent replay and competing-slot race, conflict approval request, conversation reply, owner-approved displacement, source projection and queued-only notifications. Isolated local ADA only.");
+    console.log("PASS: real planner/repository/SQL booking, concurrent replay, competing-slot and recovery-closure races, conflict approval request, conversation reply, owner-approved displacement, source projection and queued-only notifications. Isolated local ADA only.");
   } finally {
     // Preview retention intentionally denies DELETE to the service role. Use
     // local psql only for these generated fixture IDs, never broaden API grants.
     assert.match(workspaceId, /^[a-f0-9-]{36}$/); assert.match(connectionId, /^[a-f0-9-]{36}$/);
-    const sql = ["begin;", ...["crm_changes", "crm_operations", "crm_previews", "crm_task_links", "crm_client_mappings", "crm_api_budgets", "crm_integrations"]
+    const sql = ["begin;", ...["crm_changes", "crm_operations", "crm_closed_operations", "crm_previews", "crm_task_links", "crm_client_mappings", "crm_api_budgets", "crm_integrations"]
       .map(table => `delete from public.${table} where ${table === "crm_integrations" ? "id" : "integration_id"}='${connectionId}';`),
       `delete from pgmq.q_ada_notifications where message->>'notificationId' in (select id from public.notifications where workspace_id='${workspaceId}');`,
       ...["notifications", "pending_requests", "work_events", "work_sessions", "workspace_members", "workspaces"]

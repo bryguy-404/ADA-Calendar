@@ -11,6 +11,8 @@ import { POST as ask } from "../app/api/integrations/crm/v1/requests/route";
 import { POST as reply } from "../app/api/integrations/crm/v1/replies/route";
 import { GET as operation } from "../app/api/integrations/crm/v1/operations/[operationId]/route";
 import { GET as changes } from "../app/api/integrations/crm/v1/changes/route";
+import { POST as settle } from "../app/api/integrations/crm/v1/operations/[operationId]/settle/route";
+import { POST as maintenance } from "../app/api/integrations/crm/v1/maintenance/route";
 import { crmTestContext as context, crmTestPreviewId as previewId } from "./test-fixtures/crm";
 const root = "https://calendar.example.invalid/api/integrations/crm/v1/", operationId = "20000000-0000-4000-8000-000000000006";
 const rpc = vi.fn(), maybeSingle = vi.fn(), limit = vi.fn();
@@ -26,6 +28,34 @@ beforeEach(() => {
 });
 afterEach(() => { vi.resetAllMocks(); vi.unstubAllEnvs(); });
 describe("CRM transaction and recovery HTTP boundary", () => {
+  it("settles uncertain operations using only service authority and strips stored private fields", async () => {
+    rpc.mockResolvedValue({ data: { ...result, privateSnapshot: "SECRET" }, error: null });
+    const response = await settle(post("settle", {}), { params: Promise.resolve({ operationId }) });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(result);
+    expect(rpc).toHaveBeenCalledWith("settle_crm_operation", { p_integration_id: context.connection.id, p_credential_hash: context.connection.credentialHash, p_operation_id: operationId });
+    expect(authenticateCrmRequest).not.toHaveBeenCalled();
+    rpc.mockResolvedValue({ data: { apiVersion: "1", operationId, status: "rejected" }, error: null });
+    vi.stubEnv("ADA_CRM_BOOKING_ENABLED", "false");
+    expect((await settle(post("settle", {}), { params: Promise.resolve({ operationId }) })).status).toBe(200);
+    expect((await settle(post("settle", { cancelWork: true }), { params: Promise.resolve({ operationId }) })).status).toBe(400);
+    vi.mocked(authenticateCrmService).mockRejectedValue(new CrmApiError("denied", "Denied", 401));
+    rpc.mockClear();
+    expect((await settle(post("settle", {}), { params: Promise.resolve({ operationId }) })).status).toBe(401);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it("reports a closed operation as rejected even when it never reached preparation", async () => {
+    maybeSingle.mockResolvedValueOnce({ data: null, error: null }).mockResolvedValueOnce({ data: { operation_id: operationId }, error: null });
+    const response = await operation(new Request(root + "operations/" + operationId), { params: Promise.resolve({ operationId }) });
+    expect(await response.json()).toEqual({ apiVersion: "1", operationId, status: "rejected" });
+  });
+  it("bounds maintenance output and does not accept caller cleanup criteria", async () => {
+    rpc.mockResolvedValue({ data: 500, error: null });
+    expect(await (await maintenance(post("maintenance", {}))).json()).toEqual({ apiVersion: "1", removed: 500 });
+    expect((await maintenance(post("maintenance", { before: "2099-01-01" }))).status).toBe(400);
+    rpc.mockResolvedValue({ data: 501, error: null });
+    expect((await maintenance(post("maintenance", {}))).status).toBe(503);
+  });
   it.each([["bookings", book, "booking"], ["requests", ask, "request"]] as const)("%s accepts only a reviewed intent and authenticates first", async (path, handler, kind) => {
     vi.mocked(submitCrmTask).mockResolvedValue(result as Awaited<ReturnType<typeof submitCrmTask>>);
     const response = await handler(post(path, { operationId, previewId }));

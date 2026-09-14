@@ -168,7 +168,39 @@ begin
   if (select settings from public.workspaces where id=workspace)<>original_settings then raise exception 'Saved reserve/settings changed'; end if;
   if exists(select 1 from public.notifications where workspace_id=workspace and (body like '%PRIVATE_%' or status<>'queued')) then raise exception 'Private data leaked or mail was sent'; end if;
   perform pg_temp.must_fail(format('update public.workspaces set clients=''[]'' where id=%L',workspace),'cannot be removed');
-  raise notice 'CRM transactions: booking, retries, collisions, authority, requests, replies, approval, Undo, completion and outbox passed';
+  -- Phase 4: an uncertain ID closes permanently, but a completed booking is never cancelled.
+  update public.crm_integrations set enabled=true where id=connection;
+  select count(*) into events_count from public.work_events where workspace_id=workspace;
+  set local role service_role;
+  replay:=public.settle_crm_operation(connection,repeat('b',64),operation);
+  if replay->>'status'<>'completed' then raise exception 'Settling cancelled committed work'; end if;
+  perform pg_temp.must_fail(format('select public.settle_crm_operation(%L,%L,%L)',connection,repeat('c',64),gen_random_uuid()),'unavailable');
+  perform pg_temp.must_fail(format('select public.settle_crm_operation(%L,null,%L)',connection,gen_random_uuid()),'unavailable');
+  request_operation:=gen_random_uuid();
+  replay:=public.settle_crm_operation(connection,repeat('b',64),request_operation);
+  if replay->>'status'<>'rejected' then raise exception 'Unknown operation not closed'; end if;
+  perform pg_temp.must_fail(format('select public.prepare_crm_operation(%L,%L,%L,%L,%L,%L,%L)',connection,request_operation,'closed-fixture',human,'teammate@example.invalid','booking','{}'::jsonb),'closed');
+  request_operation:=gen_random_uuid();
+  perform public.prepare_crm_operation(connection,request_operation,'closed-fixture',human,'teammate@example.invalid','booking','{}');
+  replay:=public.settle_crm_operation(connection,repeat('b',64),request_operation);
+  if replay->>'status'<>'rejected' or public.settle_crm_operation(connection,repeat('b',64),request_operation)<>replay then raise exception 'Prepared closure is not stable'; end if;
+  reset role;
+  if (select status from public.crm_operations where integration_id=connection and operation_id=request_operation)<>'rejected' then raise exception 'Prepared operation still active'; end if;
+  if (select count(*) from public.work_events where workspace_id=workspace)<>events_count then raise exception 'Recovery changed scheduled work'; end if;
+  if has_function_privilege('authenticated','public.settle_crm_operation(uuid,text,uuid)','execute')
+    or has_table_privilege('authenticated','public.crm_closed_operations','select') then raise exception 'Recovery authority leaked'; end if;
+  -- Cleanup is bounded and cannot erase a preview needed by an unresolved operation.
+  update public.crm_previews set created_at=now()-interval '8 days',expires_at=now()-interval '8 days'+interval '15 minutes' where id=race_preview and integration_id=connection;
+  insert into public.crm_previews select clone.* from public.crm_previews template
+    cross join generate_series(1,501) n cross join lateral jsonb_populate_record(null::public.crm_previews,
+      to_jsonb(template)||jsonb_build_object('id',md5(n::text||gen_random_uuid()::text)::uuid)) clone
+    where template.integration_id=connection and template.id=race_preview;
+  set local role service_role;
+  perform public.prepare_crm_operation(connection,gen_random_uuid(),'cleanup-fixture',human,'teammate@example.invalid','booking',jsonb_build_object('previewId',race_preview));
+  if public.prune_crm_previews(connection,repeat('b',64))<>500 or public.prune_crm_previews(connection,repeat('b',64))<>1 then raise exception 'Cleanup exceeded batch limit or lost retained preview'; end if;
+  reset role;
+  if not exists(select 1 from public.crm_previews where integration_id=connection and id=race_preview) then raise exception 'Prepared preview deleted'; end if;
+  raise notice 'CRM transactions: booking, retries, collisions, authority, requests, replies, approval, Undo, completion, recovery and outbox passed';
 end;
 $$;
 rollback;

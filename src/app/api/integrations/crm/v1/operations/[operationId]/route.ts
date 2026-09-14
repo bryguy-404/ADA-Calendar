@@ -14,6 +14,12 @@ export async function GET(request: Request, context: { params: Promise<{ operati
       .eq("integration_id", connection.id).eq("operation_id", operationId).maybeSingle();
     crmDatabaseFailure(error);
     if (data?.status === "completed") return crmJson(parseCrmStored(crmOperationResultSchema, data.result));
+    if (!data) {
+      const closed = await getSupabaseAdminClient().from("crm_closed_operations").select("operation_id")
+        .eq("integration_id", connection.id).eq("operation_id", operationId).maybeSingle();
+      crmDatabaseFailure(closed.error);
+      if (closed.data) return crmJson({ apiVersion: "1", operationId, status: "rejected" });
+    }
     return crmJson({ apiVersion: "1", operationId, status: data ? parseCrmStored(z.enum(["prepared", "rejected"]), data.status) : "not_found" });
   } catch (error) { return crmFailure(error); }
 }

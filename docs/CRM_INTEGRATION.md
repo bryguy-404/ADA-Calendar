@@ -12,7 +12,7 @@ Both applications keep their own repositories and deployments. Build Calendar's 
 | 2a. Availability and previews | Public workload projection, shared-scheduler fit/impact previews, alternatives and private expiring preview records | Committed locally as `fe5d3e1`; booking disabled |
 | 2b. Calendar scheduling transactions | Owner connection/client setup, clean-fit booking, approval requests, replies, operation lookup and atomic change recording | Committed locally as `951f663`; activation disabled |
 | 3. CRM connection | Server API client, task form fields and review, guarded task creation/reassignment, linked task display | CRM commit `9bf346b`; activation disabled |
-| 4. Synchronization and recovery | Durable submissions, background changes polling, owner decisions and edits reflected in CRM, retry/reconciliation and notification coordination | Pending |
+| 4. Synchronization and recovery | Durable submissions, background changes polling, owner decisions and edits reflected in CRM, retry/reconciliation and notification coordination | Local checkpoint; CRM `5e88c15`; activation disabled |
 | 5. Complete verification and rollout | Two-application local scenarios, failure recovery, reviewed releases, controlled activation and rollback | Pending |
 
 Each checkpoint ends with a reviewable diff, applicable checks and a local commit on the integration branch. Phase 2 is split so its read/preview API can be reviewed before introducing scheduling transactions. A local checkpoint does not demonstrate that the two deployed applications are connected. No CRM application code changes are included in Phases 1, 2a or 2b.
@@ -197,4 +197,43 @@ The CRM implementation is committed locally as `9bf346b` on `codex/calendar-inte
 
 **Verification:** CRM production/artifact build and JavaScript syntax checks passed; **55 unit/contract tests and five browser scenarios passed**. Fictional browser scenarios cover booking, conflict/alternative review, exact-time reassignment, pending approval, lost-response recovery, linked controls, legacy behavior, mobile layout and dark mode. Screenshots were visually inspected. Rollback-only SQL fixtures on `supabase_db_ada-calendar` passed for private grants, identity, activation/pause guards, grandfathering, task/preview revisions, single dispatch, retry protection, retained source history, confirmed materialization and mail suppression. These CRM schema changes were rolled back after testing; no real messages were sent.
 
-**Next:** Phase 4 adds the independent leased change poller and durable cursor, automatic reconciliation, owner decision/edit/completion/cancellation/Undo synchronization, requester replies, synchronization health, abandoned-review handling and pending-list pagination. Finish the safe client-directory setup workflow and daily-summary treatment of approval requests. Phase 3 alone does not automatically refresh linked tasks when Bryan later edits Calendar. Phase 5 still requires both actual local application stacks, concurrency/failure and notification checks, then separately reviewed release, controlled activation and rollback. Nothing has been pushed, deployed or enabled in production.
+**Next at the Phase 3 checkpoint (completed below):** Phase 4 adds the independent leased change poller and durable cursor, automatic reconciliation, owner decision/edit/completion/cancellation/Undo synchronization, requester replies, synchronization health, abandoned-review handling and pending-list pagination. Finish the safe client-directory setup workflow and daily-summary treatment of approval requests. Phase 3 alone does not automatically refresh linked tasks when Bryan later edits Calendar. Phase 5 still requires both actual local application stacks, concurrency/failure and notification checks, then separately reviewed release, controlled activation and rollback. Nothing has been pushed, deployed or enabled in production.
+
+
+## Phase 4: synchronization, replies and recovery — September 14
+
+Both codebases now contain the synchronization/recovery layer. CRM is committed locally as `5e88c15` on `codex/calendar-integration`. The Calendar changes remain on `codex/crm-integration-foundation`. This checkpoint does not connect or activate either hosted application; Phase 5 remains required.
+
+### Calendar API additions
+
+Migration `202609140004_crm_recovery.sql` adds private closed-operation records, a preparation/finalization fence, and two service-only functions. Both new routes use Node runtime, the existing connection authentication, strict empty JSON bodies, private/no-store responses, and sanitized stored output:
+
+| Route | Purpose |
+| --- | --- |
+| `POST /api/integrations/crm/v1/operations/:operationId/settle` | Atomically return an existing completed result or permanently reject an uncertain operation ID |
+| `POST /api/integrations/crm/v1/maintenance` | Delete at most 500 previews expired for more than seven days, excluding those referenced by prepared operations |
+
+Settlement locks the same connection used by finalization. A concurrent booking either commits first and is returned unchanged, or loses to the closed-operation fence and cannot commit later. Settlement does not cancel booked work, move sessions, create notifications or grant scheduling authority. Operation lookup also returns rejected for a fenced ID that never reached preparation. Browser roles cannot inspect or mutate these records, and a missing/revoked credential fails closed. Closed IDs and attempted-operation history are retained permanently.
+
+### CRM synchronization and requester workflow
+
+The private `calendar_sync` row holds the durable cursor, a two-minute lease, next eligible run, last fully caught-up success and sanitized health. The worker runs independently of new-assignment and email flags, immediately on startup and then every 30 seconds when `ADA_CALENDAR_SYNC_ENABLED=true`. Each tick targets a 60-second budget, checks up to five oldest-unchecked pending operations, then processes up to four pages of 100 changes. Unknown sources, invalid sequences and lost leases never advance the cursor. Each page and its task updates commit atomically; per-task sequence checks prevent an older event from overwriting a recovered newer result.
+
+The worker recovers pending bookings and replies without retaining a human token or redispatching a mutation. A prepared/not-found operation older than two minutes must pass through Calendar settlement before it can be rejected. Completed results materialize through their original finalizer. New attempts need a fresh review after rejection; ambiguous failures never fall back to unchecked CRM tasks.
+
+The original verified requester can answer an owner's question in the CRM. Each reply has its own durable ID and one active reply per source; another teammate cannot reply or approve displacement. The CRM mirrors owner approval, edits, completion, cancellation and Undo. Completion clocks clear on Undo; cancelled, declined and unbooked records soft-hide after 24 hours without becoming completed work or losing their source history.
+
+The UI checks sync health every 30 seconds and warns after two minutes without a fully caught-up result, or after a worker error. Pending/rejected confirmations survive reload, paginate with an ID cursor, and permit explicit dismissal of rejected attempts. My Day and captured daily summaries include linked planned/in-progress/waiting work and exclude pending/closed requests. Assignment-email suppression remains at the SQL enqueue boundary.
+
+CRM now exposes its authenticated client directory as paginated IDs/names and provides Copy Calendar client ID in each client panel. Bryan still selects the actual Calendar client and confirms the mapping in owner-only settings. Name/alias matches remain suggestions. A connection UUID is pinned once enforced and cannot be replaced while retaining history; credential rotation keeps the same UUID and cursor.
+
+Daily maintenance expires abandoned CRM reviews after one day, deletes cancelled never-dispatched reviews after seven more days, and invokes bounded Calendar preview cleanup. Submitted operation, reply, source and closed-ID history remains intact.
+
+### Verification and rollout boundary
+
+- Calendar: **1,385 tests passed in 72 files**, plus lint, type checking and production build. Three rollback-only SQL suites passed, including closure/replay, private grants, invalid credentials, bounded cleanup and prepared-preview retention.
+- The real TypeScript planner/repository/Supabase smoke passed simultaneous duplicate booking, competing-slot scheduling and settlement-versus-booking races, replies, owner-approved displacement and queued-only notifications. Its generated local accounts/workspace/operation fences were removed afterward.
+- CRM: **71 unit/contract tests and seven Chrome browser scenarios passed**, with build/syntax checks and rollback-only SQL tests. Coverage includes leases, cursor gaps, atomic page rollback, identity pinning, original-requester/concurrent replies, stale-event suppression, completion/Undo/decline, retention, daily summaries and mail suppression. Desktop/mobile screenshots were visually inspected and the local fixture had no browser errors.
+- Browser tests run the real CRM UI, gateway and worker with explicitly fictional adapters. SQL tests separately exercise actual functions in the isolated local ADA database, rolling the entire CRM schema back. The two actual local HTTP/auth/database stacks together are still **Phase 5**, including restart, credential rotation/revocation, protected-time and cross-system failure/release checks.
+
+Deploy Calendar's schema/API first, then CRM's compatible schema/server/UI, with activation disabled. CRM `deploy/calendar-sync.sql` must follow both `calendar-integration.sql` and the existing `my-day-emails.sql`; use each repository's existing reviewed migration path. In a later separately approved rollout, pin the connection and confirm mappings, enable enforcement with accepting paused, start sync and verify catch-up, then enable new assignments. Pause acceptance without dropping enforcement or history. No push, merge, production migration, deployment, activation or real send occurred in this checkpoint.
