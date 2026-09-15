@@ -134,19 +134,150 @@
       "externalClientId": "z-roofing-and-construction",
       "calendarClientId": "b8b88e19-6a4f-487f-8e95-3f9f640e582e",
       "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Acts Management Dental Group",
+      "calendarName": "Acts Management Dental Group",
+      "externalClientId": "acts-management-dental-group",
+      "calendarClientId": "f92c3641-c015-4280-8a38-521ff82d1269",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Curtis Products",
+      "calendarName": "Curtis Products",
+      "externalClientId": "curtis-products",
+      "calendarClientId": "f6fa4c39-b562-40a7-b027-99f66f754983",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Eric Moore Dental",
+      "calendarName": "Eric Moore Dental",
+      "externalClientId": "eric-moore-dental",
+      "calendarClientId": "cc165ddc-9826-4b62-9fbe-6eee31fa5c62",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Family Foot Care",
+      "calendarName": "Family Foot Care",
+      "externalClientId": "family-foot-care",
+      "calendarClientId": "d7bbfb66-c802-4d58-a296-ca6750b5fdfb",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Hoffman Orthodontics",
+      "calendarName": "Hoffman Orthodontics",
+      "externalClientId": "hoffman-orthodontics",
+      "calendarClientId": "743293d2-e2d6-46ed-836b-b80b1a7aa783",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Linden Grill",
+      "calendarName": "Linden Grill",
+      "externalClientId": "linden-grill",
+      "calendarClientId": "7ff7d816-ea7b-46b3-aead-23204f970b8c",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "London Stoneworks",
+      "calendarName": "London Stoneworks",
+      "externalClientId": "london-stoneworks",
+      "calendarClientId": "f76e17fa-e3da-41a9-a179-afb15be4bc68",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Marvin Enterprises",
+      "calendarName": "Marvin Enterprises",
+      "externalClientId": "marvin-enterprises",
+      "calendarClientId": "34ef4192-9158-4b1e-af36-19608410f3fc",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Michiana Battery",
+      "calendarName": "Michiana Battery",
+      "externalClientId": "michiana-battery",
+      "calendarClientId": "cc91e150-3e2d-4a44-8bbf-e545351e8cba",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Midtown Dental Care",
+      "calendarName": "Midtown Dental Care",
+      "externalClientId": "midtown-dental-care",
+      "calendarClientId": "4eba7b78-7520-4a99-913e-a421369e3d02",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Midwest Enterprises",
+      "calendarName": "Midwest Enterprises",
+      "externalClientId": "midwest-enterprises",
+      "calendarClientId": "4e210c52-7c7e-4a02-bc9b-8f34d37368ca",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Mimmo's Pizza",
+      "calendarName": "Mimmo's Pizza",
+      "externalClientId": "mimmos-pizza",
+      "calendarClientId": "cf46cee7-329c-4039-9411-86b1336ff927",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Platinum Cargo",
+      "calendarName": "Platinum Cargo",
+      "externalClientId": "platinum-cargo",
+      "calendarClientId": "109a260e-f72c-4edf-b443-f3b1ccee646f",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Seald Roofing",
+      "calendarName": "Seald Roofing",
+      "externalClientId": "seald-roofing",
+      "calendarClientId": "bb5d2674-e7c1-44dd-8759-3151463cecf0",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "The Trainer Pack",
+      "calendarName": "The Trainer Pack",
+      "externalClientId": "the-trainer-pack",
+      "calendarClientId": "510f10ca-0901-43c9-bc2c-79e79756de4d",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Wolf Family Dentistry",
+      "calendarName": "Wolf Family Dentistry",
+      "externalClientId": "wolf-family-dentistry",
+      "calendarClientId": "f8c63ec1-8e8a-4b4a-95f8-4d805738876e",
+      "status": "installed_owner_confirmed"
+    },
+    {
+      "crmName": "Zent Family Dentistry",
+      "calendarName": "Zent Family Dentistry",
+      "externalClientId": "zent-family-dentistry",
+      "calendarClientId": "94892c3d-1e3d-4bbe-833e-da2adbfc5ed3",
+      "status": "installed_owner_confirmed"
     }
   ],
   "ownerApproval": {
     "approvedBy": "Bryan",
     "approvedOn": "2026-09-15",
-    "scope": "All 19 listed client pairs, including United Way and Z Roofing; no new clients authorized."
+    "scope": "Original 19 client pairs, including United Way and Z Roofing; subsequently approved creation and matching of the 16 remaining listed CRM clients, plus explicit approval to include Hoffman Orthodontics."
   },
-  "setupVerification": {
+  "initialSetupVerification": {
     "verifiedOn": "2026-09-15",
     "integrationId": "e154f3c1-35e0-4cb7-9387-b31d14435a4f",
     "installedCount": 19,
     "confirmedByOwner": true,
     "connectionEnabled": false,
     "method": "Owner-authenticated Calendar setup; exact IDs and confirmed_by verified with read-only hosted SQL."
+  },
+  "setupVerification": {
+    "verifiedOn": "2026-09-15",
+    "integrationId": "e154f3c1-35e0-4cb7-9387-b31d14435a4f",
+    "installedCount": 36,
+    "confirmedByOwner": true,
+    "connectionEnabled": true,
+    "calendarClientCount": 47,
+    "addedCalendarClientCount": 17,
+    "original30ClientsAndAliasesPreserved": true,
+    "unmatchedCrmClientCount": 0,
+    "method": "Created clients and confirmed exact matches in owner-authenticated Calendar settings; all IDs and owner confirmation independently verified with read-only hosted SQL and all 36 saved matches visible in the UI."
   }
 }

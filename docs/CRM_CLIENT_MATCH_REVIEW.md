@@ -1,6 +1,6 @@
 # Approved CRM / Calendar client matches
 
-Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. All 19 mappings are installed through the owner-authenticated Calendar setup on connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`. Read-only hosted verification confirms the exact IDs and the owner's recorded confirmation for every pair. The connection, booking and synchronization are now active following the approved live pilot; no new clients were created.
+Prepared September 15, 2026 from the live client directories. Bryan approved the original 19 pairs below, including both clarification pairs, then approved adding and matching the 16 remaining listed clients and explicitly included Hoffman Orthodontics. All 36 current CRM clients are now matched through the owner-authenticated Calendar setup on connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`. Read-only hosted verification confirms the exact IDs and the owner's recorded confirmation for every pair. Calendar now has 47 clients: the original 30 retain their IDs, names and aliases, and 17 approved clients were added. The connection, booking and synchronization remain active following the approved live pilot.
 
 ## Approved matches
 
@@ -33,13 +33,33 @@ Prepared September 15, 2026 from the live client directories. Bryan approved all
 
 Bryan confirmed that both pairs refer to the same clients.
 
-## CRM clients with no proposed Calendar match
+## Additional clients — approved, created and matched
 
-Acts Management Dental Group, Curtis Products, Eric Moore Dental, Family Foot Care, Linden Grill, London Stoneworks, Marvin Enterprises, Michiana Battery, Midtown Dental Care, Midwest Enterprises, Mimmo's Pizza, Platinum Cargo, Seald Roofing, The Trainer Pack, Wolf Family Dentistry, and Zent Family Dentistry.
+Bryan approved the original 16 remaining names and separately approved Hoffman Orthodontics, which appeared in the refreshed CRM directory. Each was created as a separate Calendar client with its exact CRM name and an empty alias list.
 
-Bryan can identify an existing Calendar client or choose to add a new one. Do not silently match a parent dental group to an individual practice or create clients from guesses. These clients cannot use integrated booking until an owner-confirmed match exists.
+| CRM name | Calendar name |
+| --- | --- |
+| Acts Management Dental Group | Acts Management Dental Group |
+| Curtis Products | Curtis Products |
+| Eric Moore Dental | Eric Moore Dental |
+| Family Foot Care | Family Foot Care |
+| Hoffman Orthodontics | Hoffman Orthodontics |
+| Linden Grill | Linden Grill |
+| London Stoneworks | London Stoneworks |
+| Marvin Enterprises | Marvin Enterprises |
+| Michiana Battery | Michiana Battery |
+| Midtown Dental Care | Midtown Dental Care |
+| Midwest Enterprises | Midwest Enterprises |
+| Mimmo's Pizza | Mimmo's Pizza |
+| Platinum Cargo | Platinum Cargo |
+| Seald Roofing | Seald Roofing |
+| The Trainer Pack | The Trainer Pack |
+| Wolf Family Dentistry | Wolf Family Dentistry |
+| Zent Family Dentistry | Zent Family Dentistry |
 
-The exact client IDs, owner approval and installation status are recorded in [the mapping records](CRM_CLIENT_MATCH_PROPOSALS.json). All 19 are approved and installed. Clients without a proposed match remain unresolved.
+All 36 current CRM clients have an owner-confirmed match. No task or work session was created by this directory setup. Acts Management Dental Group remains its own client; it was not merged with an individual dental practice.
+
+The exact client IDs, owner approval and installation status are recorded in [the mapping records](CRM_CLIENT_MATCH_PROPOSALS.json). New CRM clients added later will still need their own owner-confirmed Calendar match.
 
 ## Connection and pilot
 

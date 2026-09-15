@@ -1,6 +1,14 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Both applications, integration schemas and all 19 approved client matches are installed. Calendar booking, CRM assignment checks and synchronization are active. The approved live pilot passed booking, conflict/alternative previews and owner cancellation with synchronization back to CRM. The test booking is cancelled and consumes no time. Calendar email delivery remains restricted to Bryan; normal team delivery has not been enabled.
+Release procedure and verification record for the paired integration branches. Both applications, integration schemas and all 36 current CRM client matches are installed. Calendar has 47 clients after the 17 approved additions. Calendar booking, CRM assignment checks and synchronization are active. The approved live pilot passed booking, conflict/alternative previews and owner cancellation with synchronization back to CRM. The test booking is cancelled and consumes no time. Calendar email delivery remains restricted to Bryan; normal team delivery has not been enabled.
+
+## All current CRM clients matched — September 15, 2026
+
+- Bryan approved creating and matching the 16 remaining listed CRM clients. A fresh read found Hoffman Orthodontics as a seventeenth addition; the first save was blocked by automatic approval review before execution because Hoffman was outside the original 16. Bryan then explicitly approved **Yes, include Hoffman Orthodontics**. No blocked mutation was treated as saved.
+- Added all 17 through the owner-authenticated Calendar **Clients → Save directory** form, then confirmed each exact CRM ID and Calendar client through **CRM → Confirm client match**. The existing connection and its 19 previous mappings were preserved. No direct database writes substituted for owner authorization.
+- Read-only hosted verification confirms 47 Calendar clients, with all original 30 IDs, names and aliases unchanged; all 17 additions appear once with new IDs and empty aliases. The 36 mappings cover every client in the refreshed CRM directory and all have the connection owner's `confirmed_by`. The Calendar UI visibly lists all 36 saved matches. Exact pairs are in `CRM_CLIENT_MATCH_PROPOSALS.json`; there are no unresolved current CRM clients.
+- The Calendar booking API and connection remain visibly enabled. The change sequence remains 2 from the cancelled live pilot; this client setup created no task or reserved work session. No credentials, hosting settings, email configuration, source code or database schema changed, and no deployment or GitHub push was required. Normal team email delivery remains unapproved and restricted as recorded below.
+- These additions resolve the unmapped-client limitation recorded in the earlier pilot checkpoint. Any CRM client created later still requires an owner-confirmed Calendar match.
 
 ## Live pilot passed; integration active — September 15, 2026
 
