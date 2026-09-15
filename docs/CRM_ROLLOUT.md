@@ -1,6 +1,16 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Calendar has been released with integration access disabled. CRM schema installation and activation remain pending.
+Release procedure and verification record for the paired integration branches. Calendar has been released with integration access disabled. The CRM integration schema is installed; the CRM application release, connection configuration and activation remain pending.
+
+## CRM database release — September 15, 2026
+
+- Bryan accepted the Alpha Dog Agency Supabase organization invitation. The existing CLI login now successfully queries the intended CRM project, `lyopwmiybrhmxbmjjopv`. No database or ownership transfer was needed.
+- Read-only inspection confirmed the existing task identity/assigner, My Day and internal-company schema. The live assignment and daily-email function bodies matched their reviewed pre-integration SQL exactly. GitHub still reports CRM main at `756aff303937d80b4c0a581bf9088826512d4604` and the tested integration branch at `5dabe28092d78b0ac1b39155962d6c36eb44446e`; no intervening code changes required another local test run.
+- Applied only `deploy/calendar-integration.sql`, followed by `deploy/calendar-sync.sql`, to that CRM database through the authenticated Supabase SQL command. Both transactions succeeded. Do not rerun these one-time migrations or the original schema/seed scripts.
+- Post-install read-only verification matched all 18 installed integration function bodies to the reviewed files. None is executable by `anon` or `authenticated`. All three private integration tables have RLS enabled and deny browser reads. Connection enforcement and acceptance remain false, its identity is null, the sync cursor is 0 with no lease, and there are no submissions or linked tasks.
+- Before/after counts remain 35 clients, 29 tasks, 2 resources, 36 assignment-email records and 5 daily-email records. No live fixture tasks were created, no worker was invoked for testing, and no real test email was sent. Both applications' public health endpoints and the CRM sign-in HTML return 200; Calendar's integration status still returns the expected 503 `crm_disabled`.
+- Railway access is the next prerequisite: the signed-in Bryan account's workspace selector lists only Bryan Arambula's Projects, and the recorded CRM project URL returns 404. The CRM app has not been merged to main or deployed by this checkpoint. Ask the owner to invite Bryan's existing Railway account to the **ADA CRM project** with **Editor** access, or have the owner manage its connection variables and deployment directly. [Railway project invitations](https://docs.railway.com/projects#inviting-members) and [project roles](https://docs.railway.com/projects/project-members) describe that access. Recheck the actual deployment approval behavior after access is granted; do not assume the old approval requirement is unchanged.
+- Resume with CRM hosting settings and release verification, then connection credentials, owner-confirmed client mappings and the controlled activation checks below. The complete integration remains off. No GitHub push, Railway deployment or hosting-variable change was performed at this checkpoint.
 
 ## Calendar release — September 14, 2026
 
