@@ -1,6 +1,14 @@
 # ADA Calendar / CRM release checklist
 
-Prepared for the paired local integration branches. This is a reviewable release procedure, not a record of a production deployment. No live rollout step has been performed.
+Release procedure and verification record for the paired integration branches. Calendar has been released with integration access disabled. CRM schema installation and activation remain pending.
+
+## Calendar release — September 14, 2026
+
+- Calendar main is now `1a75bb30313a0f812e69b3021ecbe9c8f9fa2bd8`. Before main advanced, [GitHub run 34910322190](https://github.com/bryguy-404/ADA-Calendar/actions/runs/34910322190) passed lint, type checking, 1,385 tests in 72 files, the production build, and all 183 browser scenarios. The later main push reuses this same verified source commit.
+- Railway deployment `b5505fcc-9494-463f-87c7-352e58bccde8` reports success. The Supabase GitHub deployment also reports success; independent hosted SQL confirms all four migrations `202609140001`–`202609140004` were applied through that integration. No CLI migration push was used.
+- Live HTTPS checks pass: `/api/health` 200, password sign-in page 200, anonymous `/api/state` 401. The new `/api/integrations/crm/v1/status` returns the expected 503 `crm_disabled`. Working hours remain 09:00–17:00 and the saved reserve remains 0. No CRM credential, mapping, booking, or pilot task was created.
+- CRM's reviewed merge is `5dabe28092d78b0ac1b39155962d6c36eb44446e`, published to `alphadogagency/ada-crm` on `codex/calendar-integration`. CRM main stays at `756aff3`; its integration schema and application have not been released. The next step is access to the existing agency Supabase project, followed by the two reviewed CRM migrations and the paused CRM deployment. The complete integration is not active yet.
+- No real test email was sent. Local fixture servers and the disposable CRM Supabase stack were stopped; the existing Calendar stack and unrelated local projects were preserved. Unrelated working changes in `docs/RESUME.md` and `next-env.d.ts` remain untouched.
 
 ## September 14 prerelease review
 
