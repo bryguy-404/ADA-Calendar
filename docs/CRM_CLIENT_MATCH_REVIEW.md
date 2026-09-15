@@ -1,8 +1,8 @@
-# CRM / Calendar client matches for Bryan's review
+# Approved CRM / Calendar client matches
 
-Prepared September 15, 2026 from the live client directories. These are proposals only: no mappings or new clients have been created. Bryan must confirm the actual client identities before bookings are enabled.
+Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. The owner approval is recorded; no mappings or new clients have been created yet. Apply these exact IDs through the owner-authenticated setup after the connection exists.
 
-## Proposed matches
+## Approved matches
 
 | CRM name | Calendar name |
 | --- | --- |
@@ -24,14 +24,14 @@ Prepared September 15, 2026 from the live client directories. These are proposal
 | Selking Performance | Selking Performance |
 | Tech Tyler MSP | Tech Tyler |
 
-## Two names needing particular clarification
+## Clarification pairs — also approved
 
-| CRM name | Possible Calendar name |
+| CRM name | Calendar name |
 | --- | --- |
 | United Way | United Way Of St. Joseph |
 | Z Roofing & Construction | Z Roofing and Solutions |
 
-Confirm whether each pair is the same organization. A similar name alone is not sufficient.
+Bryan confirmed that both pairs refer to the same clients.
 
 ## CRM clients with no proposed Calendar match
 
@@ -39,10 +39,10 @@ Acts Management Dental Group, Curtis Products, Eric Moore Dental, Family Foot Ca
 
 Bryan can identify an existing Calendar client or choose to add a new one. Do not silently match a parent dental group to an individual practice or create clients from guesses. These clients cannot use integrated booking until an owner-confirmed match exists.
 
-The exact client IDs are recorded in [the mapping proposals](CRM_CLIENT_MATCH_PROPOSALS.json). All entries remain proposals until Bryan confirms them.
+The exact client IDs and owner approval are recorded in [the mapping records](CRM_CLIENT_MATCH_PROPOSALS.json). All 19 are approved and pending setup. Clients without a proposed match remain unresolved.
 
 ## Connection and pilot
 
-The proposed server connection uses CRM website `https://alphadogcrm.com`, CRM Auth project `https://lyopwmiybrhmxbmjjopv.supabase.co`, its existing public/publishable key, and verified agency domain `alphadogagency.com`. The newly issued private connection credential belongs only in the CRM server's Railway variables; it must not be put in this document, source control, chat, logs, task records or browser storage.
+The proposed server connection uses CRM website `https://alphadogcrm.com`, CRM Auth project `https://lyopwmiybrhmxbmjjopv.supabase.co`, its existing public/publishable key, and verified agency domain `alphadogagency.com`. Once issued, the private connection credential belongs only in the CRM server's Railway variables; it must not be put in this document, source control, chat, logs, task records or browser storage.
 
 Create the connection disabled. After configuration and approved client matches, agree on a disposable live task, open work slot and test-notification recipient before enabling a controlled pilot. Retain the established owner-only approval and protected-time rules.

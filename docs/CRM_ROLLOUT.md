@@ -1,6 +1,10 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Both application releases and the integration database updates are installed. Connection credentials, owner-confirmed client mappings and controlled activation remain pending; the integration is off.
+Release procedure and verification record for the paired integration branches. Both application releases and the integration database updates are installed. Bryan has approved 19 client matches; installing those matches, connection credentials and controlled activation remain pending. The integration is off.
+
+## Client approval — September 15, 2026
+
+Bryan confirmed every one of the 19 reviewed client pairs, expressly including the United Way and Z Roofing clarification pairs. The exact approved pairs and IDs are recorded in `CRM_CLIENT_MATCH_REVIEW.md` and `CRM_CLIENT_MATCH_PROPOSALS.json`; they remain pending setup, not live mappings. This does not authorize guessed mappings or new clients for the 16 CRM names without a proposed Calendar match. The separately requested connection-key creation approval has not yet been answered.
 
 ## CRM application release — September 15, 2026
 
