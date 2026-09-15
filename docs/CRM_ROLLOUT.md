@@ -1,6 +1,14 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Both application releases, the integration database updates and all 19 owner-approved client matches are installed. Bryan's Calendar connection remains disabled. Four CRM hosting settings are staged, not deployed; saving a replacement credential and controlled activation remain pending. The integration is off.
+Release procedure and verification record for the paired integration branches. Both application releases, the integration database updates and all 19 owner-approved client matches are installed. Bryan's Calendar connection remains disabled. Five CRM hosting settings are staged, not deployed; the saved credential has one extra line break that must be corrected before deployment. Controlled activation remains pending. The integration is off.
+
+## Original credential staged; copy correction pending — September 15, 2026
+
+- Bryan clarified that he had saved the original one-time connection key. No replacement is needed and no rotation has been performed. This supersedes the replacement-key recommendation in the preceding checkpoint.
+- Bryan added `ADA_CALENDAR_CREDENTIAL` himself. Railway shows **Apply 5 changes** and 12 service variables: the original seven and the five intended integration settings. Independently checked the two HTTPS origins and verified both `ADA_CALENDAR_ENABLED` and `ADA_CALENDAR_SYNC_ENABLED` are exactly `false`.
+- Read-only inspection of the credential's value editor found one embedded newline: 92 characters instead of the expected 91. With that single whitespace character removed, the value has the expected format and the existing connection ID `e154f3c1-35e0-4cb7-9387-b31d14435a4f`. This is a format/identity check, not proof of successful service authentication. No private credential value is stored in these records.
+- Deployment was withheld. The credential editor is open in the CRM Railway tab, with the caret positioned immediately after the unwanted newline. Bryan must press the Mac **Delete** key once and click **Submit**; the computer-use credential-change hand-off rule applies. No edit was submitted by the agent. Re-read the saved raw value to confirm its exact format before deploying all five staged variables together.
+- Connection/API/booking flags and CRM enforcement/acceptance remain disabled. No live test task, manual notification-worker run or real test email was performed. After the corrected configuration deployment, verify the CRM starts successfully, then continue the paused connection checks and agreed live pilot.
 
 ## Client matches installed; CRM hosting prepared — September 15, 2026
 
