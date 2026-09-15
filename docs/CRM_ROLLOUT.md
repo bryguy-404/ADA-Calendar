@@ -1,6 +1,14 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Both application releases and the integration database updates are installed. Bryan created the disabled Calendar connection and approved 19 client matches. Saving the credential in CRM hosting, installing those matches and controlled activation remain pending. The integration is off.
+Release procedure and verification record for the paired integration branches. Both application releases, the integration database updates and all 19 owner-approved client matches are installed. Bryan's Calendar connection remains disabled. Four CRM hosting settings are staged, not deployed; saving a replacement credential and controlled activation remain pending. The integration is off.
+
+## Client matches installed; CRM hosting prepared — September 15, 2026
+
+- Browser control recovered. Applied all 19 approved pairs using Calendar's owner-authenticated **Confirm client match** form. The final saved UI includes every pair, including United Way and Z Roofing. A read-only hosted query confirms each exact CRM/Calendar ID pair in `CRM_CLIENT_MATCH_PROPOSALS.json`, all 19 `confirmed_by` values equal the connection's creating owner, and connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f` remains disabled. No new clients were created; the 16 unresolved CRM names remain unmapped.
+- The previous one-time key is no longer displayed after the settings panel was closed. Do not recover it from browser internals or create a new connection. Use **Replace connection key** on the existing connection and preserve its UUID and mappings. No replacement was generated at this checkpoint.
+- In Railway's **ADA CRM / production / ada-crm** service, staged four new variables: `CRM_PUBLIC_ORIGIN=https://alphadogcrm.com`, `ADA_CALENDAR_URL=https://ada-calendar-production.up.railway.app`, `ADA_CALENDAR_ENABLED=false`, and `ADA_CALENDAR_SYNC_ENABLED=false`. Railway shows **Apply 4 changes** and 11 service variables (the original seven plus these four). No Deploy action was taken; runtime settings and the active deployment are unchanged.
+- Prepared a fifth new-variable form with name `ADA_CALENDAR_CREDENTIAL` and its value empty. Return to the Calendar CRM panel for Bryan to replace the key, then have him copy it directly into that Railway value field and click **Add**. The computer-use credential-change rule requires user hand-off for this step. Do not put the key in chat, logs or source files. Verify five staged changes before deploying the complete URL/credential pair together; do not deploy the four-variable draft by itself.
+- This checkpoint includes no test booking or email and no API, booking, connection, sync, CRM enforcement or acceptance activation. Continue with protected credential storage, the paused deployment/connection checks and an agreed live pilot.
 
 ## Disabled connection created — September 15, 2026
 

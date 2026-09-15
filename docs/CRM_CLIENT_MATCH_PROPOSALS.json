@@ -7,138 +7,146 @@
       "calendarName": "Alpha Dog Agency",
       "externalClientId": "internal-alpha-dog-agency",
       "calendarClientId": "90e9cebe-3334-46de-8ae5-650d89900dbf",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Balsam Dental",
       "calendarName": "Balsam Dental",
       "externalClientId": "balsam-dental",
       "calendarClientId": "768359d2-8b90-45a6-b88a-6be3004e9126",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Becht Pride",
       "calendarName": "Becht Pride",
       "externalClientId": "becht-pride",
       "calendarClientId": "a503f14d-9119-40bb-b5f0-39482b932f41",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Drive & Shine",
       "calendarName": "Drive and Shine",
       "externalClientId": "drive-and-shine",
       "calendarClientId": "6c5199aa-dcd6-4f5d-9e93-8635afe025b0",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Emily Stout DDS",
       "calendarName": "Emily Stout",
       "externalClientId": "emily-stout-dds",
       "calendarClientId": "7177a15a-c1dd-41d3-a566-fbf79b3f86e0",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Green Improvements",
       "calendarName": "Green Improvements",
       "externalClientId": "green-improvements",
       "calendarClientId": "dd835b3b-fbbd-4dca-8b28-52aa17cd22ed",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Growing Kids Learning Center",
       "calendarName": "Growing Kids",
       "externalClientId": "growing-kids-learning-center",
       "calendarClientId": "d774d700-6047-4003-8a8c-a6af64664ae4",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Higher Ground Tree Care",
       "calendarName": "Higher Ground Tree Care",
       "externalClientId": "higher-ground-tree-care",
       "calendarClientId": "b33c40d5-78ed-4566-8a04-b89e1ac68ec0",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Laville Barber Supply",
       "calendarName": "Laville Barber",
       "externalClientId": "laville-barber-supply",
       "calendarClientId": "fb1c730c-0a6c-4044-ac2d-dff91d2bfde7",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Middletown Family Dentistry",
       "calendarName": "Middletown Family Dentistry",
       "externalClientId": "middletown-family-dentistry",
       "calendarClientId": "b1560976-c8eb-4720-9256-3a2bc89d213f",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Oral Surgery Michiana",
       "calendarName": "Oral Surgery Michiana",
       "externalClientId": "oral-surgery-michiana",
       "calendarClientId": "6aecc273-4830-478e-987e-af892b5e79d1",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Periolat Family Dentistry",
       "calendarName": "Periolat Family Dentistry",
       "externalClientId": "periolat-family-dentistry",
       "calendarClientId": "4040e9a4-7146-42e7-9abc-254cf1e7b217",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Point Guard University",
       "calendarName": "Point Guard University",
       "externalClientId": "internal-point-guard-university",
       "calendarClientId": "4dca6c18-6077-4637-869f-3fc3958b24e9",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Pura Vida Chicas",
       "calendarName": "Pura Vida Chicas",
       "externalClientId": "pura-vida-chicas",
       "calendarClientId": "132e4bc9-4b6f-451b-bdbb-5ab863dfa5e0",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Rise N Roll",
       "calendarName": "Rise'n Roll",
       "externalClientId": "rise-n-roll",
       "calendarClientId": "5ca5fc51-b6bd-44a9-8c30-a3428725b8ef",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Selking Performance",
       "calendarName": "Selking Performance",
       "externalClientId": "selking-performance",
       "calendarClientId": "d41b3ad1-7121-4ab8-8442-733721901ff4",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Tech Tyler MSP",
       "calendarName": "Tech Tyler",
       "externalClientId": "tech-tyler-msp",
       "calendarClientId": "8a9d6886-8173-4bf4-83b3-d23c04665d7d",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "United Way",
       "calendarName": "United Way Of St. Joseph",
       "externalClientId": "united-way",
       "calendarClientId": "2987a8cd-fb7f-4ac3-951e-903ea571a36c",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     },
     {
       "crmName": "Z Roofing & Construction",
       "calendarName": "Z Roofing and Solutions",
       "externalClientId": "z-roofing-and-construction",
       "calendarClientId": "b8b88e19-6a4f-487f-8e95-3f9f640e582e",
-      "status": "owner_approved_pending_setup"
+      "status": "installed_owner_confirmed"
     }
   ],
   "ownerApproval": {
     "approvedBy": "Bryan",
     "approvedOn": "2026-09-15",
     "scope": "All 19 listed client pairs, including United Way and Z Roofing; no new clients authorized."
+  },
+  "setupVerification": {
+    "verifiedOn": "2026-09-15",
+    "integrationId": "e154f3c1-35e0-4cb7-9387-b31d14435a4f",
+    "installedCount": 19,
+    "confirmedByOwner": true,
+    "connectionEnabled": false,
+    "method": "Owner-authenticated Calendar setup; exact IDs and confirmed_by verified with read-only hosted SQL."
   }
 }

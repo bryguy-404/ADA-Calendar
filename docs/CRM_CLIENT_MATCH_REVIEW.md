@@ -1,6 +1,6 @@
 # Approved CRM / Calendar client matches
 
-Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. The owner approval is recorded; no mappings or new clients have been created yet. Apply these exact IDs through the owner-authenticated setup to the disabled connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`, which Bryan has now created.
+Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. All 19 mappings are now installed through the owner-authenticated Calendar setup on connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`. Read-only hosted verification confirms the exact IDs and the owner's recorded confirmation for every pair. The connection remains disabled; no new clients were created.
 
 ## Approved matches
 
@@ -39,10 +39,10 @@ Acts Management Dental Group, Curtis Products, Eric Moore Dental, Family Foot Ca
 
 Bryan can identify an existing Calendar client or choose to add a new one. Do not silently match a parent dental group to an individual practice or create clients from guesses. These clients cannot use integrated booking until an owner-confirmed match exists.
 
-The exact client IDs and owner approval are recorded in [the mapping records](CRM_CLIENT_MATCH_PROPOSALS.json). All 19 are approved and pending setup. Clients without a proposed match remain unresolved.
+The exact client IDs, owner approval and installation status are recorded in [the mapping records](CRM_CLIENT_MATCH_PROPOSALS.json). All 19 are approved and installed. Clients without a proposed match remain unresolved.
 
 ## Connection and pilot
 
 The proposed server connection uses CRM website `https://alphadogcrm.com`, CRM Auth project `https://lyopwmiybrhmxbmjjopv.supabase.co`, its existing public/publishable key, and verified agency domain `alphadogagency.com`. Once issued, the private connection credential belongs only in the CRM server's Railway variables; it must not be put in this document, source control, chat, logs, task records or browser storage.
 
-The connection has been created disabled. Its one-time credential still needs to be saved in CRM's protected Railway configuration. After configuration and approved client matches, agree on a disposable live task, open work slot and test-notification recipient before enabling a controlled pilot. Retain the established owner-only approval and protected-time rules.
+The connection and mappings are installed with access disabled. The original one-time key is no longer displayed, so a replacement for this same connection must be saved in CRM's protected Railway configuration. Four nonsecret settings are staged there but not deployed. After complete configuration, agree on a disposable live task, open work slot and test-notification recipient before enabling a controlled pilot. Retain the established owner-only approval and protected-time rules.
