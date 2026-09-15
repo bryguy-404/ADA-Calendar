@@ -1,10 +1,18 @@
 # ADA Calendar / CRM release checklist
 
-Release procedure and verification record for the paired integration branches. Both application releases and the integration database updates are installed. Bryan has approved 19 client matches; installing those matches, connection credentials and controlled activation remain pending. The integration is off.
+Release procedure and verification record for the paired integration branches. Both application releases and the integration database updates are installed. Bryan created the disabled Calendar connection and approved 19 client matches. Saving the credential in CRM hosting, installing those matches and controlled activation remain pending. The integration is off.
+
+## Disabled connection created — September 15, 2026
+
+- Bryan clicked **Create disabled connection** in the owner-authenticated Calendar CRM settings and confirmed creation. Read-only hosted verification confirms connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`, CRM origin `https://alphadogcrm.com`, Auth URL `https://lyopwmiybrhmxbmjjopv.supabase.co`, agency domain `alphadogagency.com`, and `enabled=false`. Do not create a duplicate connection.
+- The one-time credential was displayed in the setup tab. It has not been saved to Railway or copied into these records. Preserve that tab until the credential is stored in the CRM server's protected configuration; do not mark the key saved prematurely.
+- All 19 client matches remain approved but pending installation. The first pair was entered into the form but not submitted. A fresh read-only query confirms zero saved mappings and zero linked tasks. Chrome subsequently returned a stuck native menu and no screenshot, preventing further owner-authenticated setup; Bryan was asked to bring the existing setup tab back to the front. No direct database writes were substituted for owner authorization.
+- Configure `CRM_PUBLIC_ORIGIN=https://alphadogcrm.com`, `ADA_CALENDAR_URL=https://ada-calendar-production.up.railway.app`, and the one-time `ADA_CALENDAR_CREDENTIAL` in the **ADA CRM** Railway service. Keep `ADA_CALENDAR_ENABLED=false` and `ADA_CALENDAR_SYNC_ENABLED=false`. Stage the Calendar URL and credential together and deploy them together: the CRM configuration rejects a partial URL/credential pair. Preserve the seven existing hosting settings.
+- Calendar API/booking flags, the disabled connection, and CRM enforcement/acceptance remain unchanged. No live test task or real test email has been created. Resume with the approved mappings and protected credential storage, then the paused connection checks and agreed pilot below.
 
 ## Client approval — September 15, 2026
 
-Bryan confirmed every one of the 19 reviewed client pairs, expressly including the United Way and Z Roofing clarification pairs. The exact approved pairs and IDs are recorded in `CRM_CLIENT_MATCH_REVIEW.md` and `CRM_CLIENT_MATCH_PROPOSALS.json`; they remain pending setup, not live mappings. This does not authorize guessed mappings or new clients for the 16 CRM names without a proposed Calendar match. The separately requested connection-key creation approval has not yet been answered.
+Bryan confirmed every one of the 19 reviewed client pairs, expressly including the United Way and Z Roofing clarification pairs. The exact approved pairs and IDs are recorded in `CRM_CLIENT_MATCH_REVIEW.md` and `CRM_CLIENT_MATCH_PROPOSALS.json`; they remain pending setup, not live mappings. This does not authorize guessed mappings or new clients for the 16 CRM names without a proposed Calendar match. Connection creation was subsequently completed by Bryan as recorded above.
 
 ## CRM application release — September 15, 2026
 

@@ -1,6 +1,6 @@
 # Approved CRM / Calendar client matches
 
-Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. The owner approval is recorded; no mappings or new clients have been created yet. Apply these exact IDs through the owner-authenticated setup after the connection exists.
+Prepared September 15, 2026 from the live client directories. Bryan approved all 19 pairs below, including both clarification pairs, on September 15. The owner approval is recorded; no mappings or new clients have been created yet. Apply these exact IDs through the owner-authenticated setup to the disabled connection `e154f3c1-35e0-4cb7-9387-b31d14435a4f`, which Bryan has now created.
 
 ## Approved matches
 
@@ -45,4 +45,4 @@ The exact client IDs and owner approval are recorded in [the mapping records](CR
 
 The proposed server connection uses CRM website `https://alphadogcrm.com`, CRM Auth project `https://lyopwmiybrhmxbmjjopv.supabase.co`, its existing public/publishable key, and verified agency domain `alphadogagency.com`. Once issued, the private connection credential belongs only in the CRM server's Railway variables; it must not be put in this document, source control, chat, logs, task records or browser storage.
 
-Create the connection disabled. After configuration and approved client matches, agree on a disposable live task, open work slot and test-notification recipient before enabling a controlled pilot. Retain the established owner-only approval and protected-time rules.
+The connection has been created disabled. Its one-time credential still needs to be saved in CRM's protected Railway configuration. After configuration and approved client matches, agree on a disposable live task, open work slot and test-notification recipient before enabling a controlled pilot. Retain the established owner-only approval and protected-time rules.
