@@ -153,14 +153,20 @@ begin
     or not exists(select 1 from public.crm_task_links where integration_id=connection and external_task_id='request-task' and work_item_id=request_preview::text)
     then raise exception 'Undo lost authoritative status or source history'; end if;
 
+  -- A verified CRM requester can opt out of email without losing completion synchronization.
+  insert into auth.users(id,email,raw_app_meta_data) values(human,'teammate@example.invalid','{}');
+  insert into public.workspace_members(workspace_id,user_id,name,email,role,receive_updates)
+    values(workspace,human,'Muted requester','teammate@example.invalid','requester',false);
   -- Changes keep accumulating while the connection is disabled; retries fail closed.
   update public.crm_integrations set enabled=false where id=connection;
   request_proposal:=before_approval||jsonb_build_object('actorId',owner_id,'operationId','complete-fixture','baseVersion',3,'status','ready','requiresApproval',false,
     'commands',jsonb_build_array(jsonb_build_object('type','status','itemId',preview,'status','completed')));
   request_proposal:=jsonb_set(jsonb_set(request_proposal,'{items,0,status}','"completed"'),'{sessions,0,status}','"completed"');
   set local role authenticated;
-  perform public.commit_schedule(request_proposal,jsonb_build_object('id','complete-'||operation,'type','schedule_changed','summary','[]'::jsonb,'itemIds',jsonb_build_array(preview)));
+  perform public.commit_schedule(request_proposal,jsonb_build_object('id','complete-'||operation,'type','schedule_changed','summary','[]'::jsonb,'itemIds',jsonb_build_array(preview)),
+    jsonb_build_array(jsonb_build_object('id','muted-completion-'||operation,'recipient','teammate@example.invalid','subject','Completed','body','Fixture completed')));
   reset role;
+  if exists(select 1 from public.notifications where workspace_id=workspace and event_id='complete-'||operation) then raise exception 'Muted requester received completion mail'; end if;
   if (select kind from public.crm_changes where integration_id=connection order by sequence desc limit 1)<>'completed' then raise exception 'Disabled connection lost completion'; end if;
   set local role service_role;
   perform pg_temp.must_fail(format('select public.finalize_crm_submission(%L,%L,%L,%L,%L,%L,''booking'','''',%L,%L)',connection,repeat('b',64),operation,preview,human,'teammate@example.invalid',proposal,repeat('a',64)),'connection unavailable');
