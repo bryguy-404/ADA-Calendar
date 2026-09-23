@@ -46,6 +46,9 @@ for (const width of [1440, 390]) {
     // Let hydration and the mobile animation frame finish before freezing time.
     await page.clock.pauseAt(new Date(at("16:00")));
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    // Hydration starts on the server's date; select the simulated browser day
+    // before checking views that show only sessions from the selected date.
+    await page.getByRole("button", { name: "Today", exact: true }).click();
     const calendar = page.getByLabel("Month workload calendar", { exact: true });
     const today = calendar.getByRole("button", { name: /^Monday, September 14,/ });
     await expect(today).toHaveAttribute("aria-label", "Monday, September 14, 0.5h available, 2h planned");
