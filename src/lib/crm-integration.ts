@@ -72,7 +72,7 @@ export interface CrmStatus {
   apiVersion: typeof CRM_API_VERSION;
   status: "authenticated";
   bookingEnabled: boolean;
-  capabilities: readonly ("connection_check" | "availability" | "previews" | "bookings" | "requests" | "replies" | "operations" | "changes")[];
+  capabilities: readonly ("connection_check" | "availability" | "previews" | "bookings" | "requests" | "replies" | "cancellations" | "operations" | "changes")[];
 }
 
 export const crmAvailabilityQuerySchema = z.object({ startDate: dateSchema, endDate: dateSchema }).strict()
@@ -110,6 +110,7 @@ export type CrmSubmission = z.infer<typeof crmSubmissionSchema>;
 
 /** Parse responses too: accidental extra private fields are never forwarded. */
 export const crmPublicTaskSchema = z.object({
+  cancellation: z.object({ by: z.email(), at: z.string(), reason: z.string().max(1000) }).nullable().optional(),
   externalTaskId: idSchema, workItemId: idSchema.nullable(), requestId: idSchema.nullable(),
   requestStatus: z.enum(["pending", "approved", "declined", "needs_information"]).nullable(),
   status: z.enum(["planned", "in_progress", "waiting", "completed", "cancelled", "pending", "declined", "needs_information", "unbooked"]),
@@ -121,3 +122,6 @@ export const crmPublicTaskSchema = z.object({
 });
 export const crmOperationResultSchema = z.object({ apiVersion: z.literal("1"), operationId: z.uuid(), status: z.literal("completed"), sequence: z.number().int().positive(), task: crmPublicTaskSchema });
 export type CrmOperationResult = z.infer<typeof crmOperationResultSchema>;
+
+export const crmCancellationInputSchema = z.object({ operationId: z.uuid(), externalTaskId: idSchema, reviewToken: z.string().regex(/^[a-f0-9]{32}$/), reason: z.string().trim().min(1).max(1000), acknowledgeStarted: z.boolean() }).strict();
+export const crmCancellationReviewSchema = z.object({ apiVersion: z.literal("1"), task: crmPublicTaskSchema, reviewToken: z.string().regex(/^[a-f0-9]{32}$/), canCancel: z.boolean(), started: z.boolean(), protected: z.boolean() });

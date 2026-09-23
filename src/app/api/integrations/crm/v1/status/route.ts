@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     await authenticateCrmRequest(request);
     const result: CrmStatus = {
       apiVersion: CRM_API_VERSION, status: "authenticated",
-      bookingEnabled: crmBookingEnabled(), capabilities: ["connection_check", "availability", "previews", "operations", "changes", ...(crmBookingEnabled() ? ["bookings", "requests", "replies"] as const : [])],
+      bookingEnabled: crmBookingEnabled(), capabilities: ["connection_check", "availability", "previews", "operations", "changes", ...(crmBookingEnabled() ? ["bookings", "requests", "replies", "cancellations"] as const : [])],
     };
     return crmJson(result);
   } catch (error) { return crmFailure(error); }

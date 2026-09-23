@@ -147,7 +147,7 @@ async function main() {
     writeFileSync(typeFile,generatedTypes);
     // Only generated Calendar fixture IDs; CRM's database is independently disposable.
     const statements=['begin;'];
-    if(connectionId){assert.match(connectionId,/^[a-f0-9-]{36}$/);for(const table of ['crm_changes','crm_operations','crm_closed_operations','crm_previews','crm_task_links','crm_client_mappings','crm_api_budgets','crm_integrations'])statements.push(`delete from public.${table} where ${table==='crm_integrations'?'id':'integration_id'}='${connectionId}';`);}
+    if(connectionId){assert.match(connectionId,/^[a-f0-9-]{36}$/);for(const table of ['crm_cancellations','crm_changes','crm_operations','crm_closed_operations','crm_previews','crm_task_links','crm_client_mappings','crm_api_budgets','crm_integrations'])statements.push(`delete from public.${table} where ${table==='crm_integrations'?'id':'integration_id'}='${connectionId}';`);}
     statements.push(`delete from pgmq.q_ada_notifications where message->>'notificationId' in (select id from public.notifications where workspace_id='${workspaceId}');`);
     for(const table of ['notifications','pending_requests','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${workspaceId}';`);
     statements.push('commit;');sql('supabase_db_ada-calendar',statements.join('\n'));

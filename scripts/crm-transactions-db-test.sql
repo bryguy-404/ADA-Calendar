@@ -206,6 +206,62 @@ begin
   if public.prune_crm_previews(connection,repeat('b',64))<>500 or public.prune_crm_previews(connection,repeat('b',64))<>1 then raise exception 'Cleanup exceeded batch limit or lost retained preview'; end if;
   reset role;
   if not exists(select 1 from public.crm_previews where integration_id=connection and id=race_preview) then raise exception 'Prepared preview deleted'; end if;
+  -- Requester cancellations use the same schedule transaction and ordered change feed.
+  preview:=gen_random_uuid(); operation:=gen_random_uuid();
+  select version into current_version from public.workspaces where id=workspace;
+  commands:=pg_temp.preview(connection,preview,human,'cancel-fixture',day+1,current_version);
+  proposal:=pg_temp.proposal(connection,preview,operation,commands,day+1,9);
+  set local role service_role;
+  response:=public.finalize_crm_submission(connection,repeat('b',64),operation,preview,human,'teammate@example.invalid','booking','',proposal,repeat('a',64));
+  reset role;
+  -- Add already-recorded work to prove cancellation cannot erase it.
+  insert into public.work_sessions(workspace_id,id,work_item_id,starts_at,ends_at,status,body)
+    values(workspace,preview||'-history',preview::text,(day-1+time '09:00') at time zone 'America/Indiana/Indianapolis',
+      (day-1+time '10:00') at time zone 'America/Indiana/Indianapolis','completed',
+      jsonb_build_object('id',preview||'-history','workItemId',preview,'start',(day-1+time '09:00') at time zone 'America/Indiana/Indianapolis',
+      'end',(day-1+time '10:00') at time zone 'America/Indiana/Indianapolis','status','completed','protected',false,'usesReserve',false));
+  response:=public.read_crm_cancellation(connection,repeat('b',64),'cancel-fixture',human,'teammate@example.invalid');
+  if not (response->>'canCancel')::boolean or not (response->>'started')::boolean then raise exception 'Cancellation review missed recorded work'; end if;
+  request_id:=response->>'reviewToken'; operation:=gen_random_uuid();
+  select jsonb_build_object('operationId','crm-cancel-'||connection||'-'||operation,'baseVersion',w.version,'actorId',principal,
+    'status','ready','requiresApproval',false,'commands',jsonb_build_array(jsonb_build_object('type','status','itemId',preview,'status','cancelled')),
+    'items',(select jsonb_agg(case when i->>'id'=preview::text then i||'{"status":"cancelled","completedAt":null,"blockedReason":null}'::jsonb else i end) from jsonb_array_elements(w.items) i),
+    'sessions',(select jsonb_agg(body order by starts_at,id) from public.work_sessions where workspace_id=w.id and not(work_item_id=preview::text and status='planned')),
+    'blocks',w.blocks) into proposal from public.workspaces w where w.id=workspace;
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,true,%L)',connection,repeat('b',64),operation,'cancel-fixture',viewer,'viewer@example.invalid',request_id,'No longer needed',proposal),'original requester');
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,false,%L)',connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',proposal),'review changed');
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,true,%L)',connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',repeat('0',32),'No longer needed',proposal),'review changed');
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,true,%L)',connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',jsonb_set(proposal,'{items,0,title}','"Tampered"')),'cannot edit other work');
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,true,%L)',connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',jsonb_set(proposal,'{sessions}','[]')),'preserve completed');
+  update public.work_sessions set body=body||'{"protected":true}' where workspace_id=workspace and work_item_id=preview::text and status='planned';
+  perform pg_temp.must_fail(format('select public.cancel_crm_task(%L,%L,%L,%L,%L,%L,%L,%L,true,%L)',connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',proposal),'review changed');
+  update public.work_sessions set body=body||'{"protected":false}' where workspace_id=workspace and work_item_id=preview::text and status='planned';
+  set local role service_role;
+  response:=public.cancel_crm_task(connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',true,proposal);
+  replay:=public.cancel_crm_task(connection,repeat('b',64),operation,'cancel-fixture',human,'teammate@example.invalid',request_id,'No longer needed',true,proposal);
+  reset role;
+  if response<>replay or response#>>'{task,status}'<>'cancelled' or response#>>'{task,cancellation,by}'<>'teammate@example.invalid' then raise exception 'Cancellation result/audit/replay failed'; end if;
+  if exists(select 1 from public.work_sessions where workspace_id=workspace and work_item_id=preview::text and status='planned')
+    or not exists(select 1 from public.work_sessions where workspace_id=workspace and id=preview||'-history' and status='completed') then raise exception 'Cancellation did not release capacity or preserve history'; end if;
+  if exists(select 1 from public.notifications where workspace_id=workspace and event_id='crm-cancel-'||connection||'-'||operation and recipient='teammate@example.invalid') then raise exception 'Cancellation ignored email opt-out'; end if;
+  if (select body#>>'{crmCancellation,email}' from public.work_events where id='crm-cancel-'||connection||'-'||operation)<>'teammate@example.invalid' then raise exception 'Missing Calendar attribution'; end if;
+  -- Pending work can be withdrawn; it cannot be approved afterward.
+  preview:=gen_random_uuid(); operation:=gen_random_uuid();
+  select version into current_version from public.workspaces where id=workspace;
+  commands:=pg_temp.preview(connection,preview,human,'withdraw-fixture',day+2,current_version);
+  proposal:=pg_temp.proposal(connection,preview,operation,commands,day+2,9)||'{"status":"approval_required","requiresApproval":true}';
+  set local role service_role;
+  response:=public.finalize_crm_submission(connection,repeat('b',64),operation,preview,human,'teammate@example.invalid','request','',proposal,repeat('a',64));
+  reset role;
+  response:=public.read_crm_cancellation(connection,repeat('b',64),'withdraw-fixture',human,'teammate@example.invalid');
+  operation:=gen_random_uuid();
+  set local role service_role;
+  response:=public.cancel_crm_task(connection,repeat('b',64),operation,'withdraw-fixture',human,'teammate@example.invalid',response->>'reviewToken','Withdraw request',false,null);
+  reset role;
+  if response#>>'{task,status}'<>'cancelled' or response#>>'{task,requestStatus}'<>'declined' then raise exception 'Withdrawal failed'; end if;
+  if exists(select 1 from public.work_sessions where workspace_id=workspace and work_item_id=preview::text) then raise exception 'Withdrawal booked time'; end if;
+  if has_function_privilege('authenticated','public.cancel_crm_task(uuid,text,uuid,text,uuid,text,text,text,boolean,jsonb)','EXECUTE') then raise exception 'Cancellation capability leaked'; end if;
+  raise notice 'Requester cancellation: original identity, stale review, protected work, history, other tasks, acknowledgement, replay, mail opt-out, audit and pending withdrawal passed';
   raise notice 'CRM transactions: booking, retries, collisions, authority, requests, replies, approval, Undo, completion, recovery and outbox passed';
 end;
 $$;

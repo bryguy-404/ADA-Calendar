@@ -151,6 +151,48 @@ export async function exerciseFlows(h) {
   await page.screenshot({path:path.join(outputDir,'crm-internal-company-booking.png'),fullPage:true});
   console.log('PASS: internal company tasks require owner mapping, book through the real Calendar API, and retain linked controls.');
 
+  // A requester can cancel only their own task, through Calendar-confirmed changes.
+  const cancelTask=internalRows[0];
+  assert.equal((await gateway('cancellations/'+cancelTask.id,undefined,otherSession.access_token)).status,403);
+  const staleCancellation=await submit('cancellations/'+cancelTask.id);
+  await commands([{type:'status',itemId:cancelTask.calendar.workItemId,status:'in_progress'}]);await sync();
+  assert.equal((await gateway('cancellations',{submissionId:randomUUID(),externalTaskId:cancelTask.id,reviewToken:staleCancellation.reviewToken,reason:'Stale review',acknowledgeStarted:false})).status,409);
+  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title}).getByRole('button',{name:'Cancel task…'})).toBeVisible();
+  await internalPanel.locator('.task').filter({hasText:internalInput.title}).getByRole('button',{name:'Cancel task…'}).click();
+  const cancellationDialog=page.locator('[aria-labelledby=calendarCancelTitle]');
+  await expect(cancellationDialog.getByLabel('Reason for cancelling')).toBeVisible();
+  await expect(cancellationDialog.getByText('Work may already have started, or some work has been recorded. Cancelling stops only the remaining work.')).toBeVisible();
+  await cancellationDialog.getByLabel('Reason for cancelling').fill('Client withdrew this request');
+  await cancellationDialog.getByLabel('I understand that Bryan may already have worked on this task.').check();
+  await page.screenshot({path:path.join(outputDir,'crm-cancellation-desktop.png')});
+  await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(outputDir,'crm-cancellation-mobile.png')});
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+  await page.setViewportSize({width:1440,height:1000});
+  await cancellationDialog.getByRole('button',{name:'Confirm cancellation',exact:true}).click();
+  await expect(cancellationDialog).not.toBeVisible({timeout:20000});await sync();
+  const cancelled=await task(cancelTask.id);assert.equal(cancelled.calendar.status,'cancelled');assert.equal(cancelled.done,false);
+  assert.equal(cancelled.calendar.cancellation.by,(await requester.auth.getUser()).data.user.email);
+  const afterCancel=await state();assert.equal(afterCancel.items.find(i=>i.id===cancelTask.calendar.workItemId).status,'cancelled');
+  assert.equal(afterCancel.sessions.filter(s=>s.workItemId===cancelTask.calendar.workItemId&&s.status==='planned').length,0);
+  assert.ok(afterCancel.events.some(e=>e.type==='crm_cancelled'&&e.summary.some(text=>text.includes('Client withdrew this request'))));
+  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title})).toContainText('Cancelled by');
+  console.log('PASS: stale cancellation rejected; original requester cancels from desktop/mobile CRM UI with started-work warning and attribution in both systems.');
+
+  const lostCancellation=await submit('cancellations/'+lost.task.externalTaskId),cancelId=randomUUID();
+  fault({path:'/api/integrations/crm/v1/cancellations',operationId:cancelId});
+  const cancelIntent={submissionId:cancelId,externalTaskId:lost.task.externalTaskId,reviewToken:lostCancellation.reviewToken,reason:'Fictional lost cancellation acknowledgement',acknowledgeStarted:true};
+  assert.equal((await submit('cancellations',cancelIntent)).state,'committing');
+  await restartCrm();await sync();
+  assert.equal((await task(lost.task.externalTaskId)).calendar.status,'cancelled');
+  assert.equal((await submit('cancellations',cancelIntent)).state,'completed');
+  const withdrawal=await preview(input('FICTIONAL withdraw pending',{mode:'exact',date:blockedDay,startTime:'09:00'}));
+  assert.notEqual(withdrawal.preview.status,'fits');await finish(withdrawal,'requests');
+  const withdrawalReview=await submit('cancellations/'+withdrawal.task.externalTaskId);
+  const withdrawn=await submit('cancellations',{submissionId:randomUUID(),externalTaskId:withdrawal.task.externalTaskId,reviewToken:withdrawalReview.reviewToken,reason:'Request withdrawn',acknowledgeStarted:false});
+  assert.equal(withdrawn.state,'completed');assert.equal(withdrawn.result.task.status,'cancelled');await sync();
+  assert.equal((await task(withdrawal.task.externalTaskId)).calendar.status,'cancelled');
+  console.log('PASS: lost cancellation acknowledgement recovers after CRM restart without duplication; pending requests can be withdrawn.');
+
   // Pause only new work; existing changes keep syncing, including after a worker restart.
   checked(await crm.from('calendar_connection').update({accepting:false}).eq('singleton',true));
   assert.equal((await gateway('previews',{submissionId:randomUUID(),kind:'create',task:input('FICTIONAL paused')})).status,503);
