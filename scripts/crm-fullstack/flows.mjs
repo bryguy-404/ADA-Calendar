@@ -157,8 +157,8 @@ export async function exerciseFlows(h) {
   const staleCancellation=await submit('cancellations/'+cancelTask.id);
   await commands([{type:'status',itemId:cancelTask.calendar.workItemId,status:'in_progress'}]);await sync();
   assert.equal((await gateway('cancellations',{submissionId:randomUUID(),externalTaskId:cancelTask.id,reviewToken:staleCancellation.reviewToken,reason:'Stale review',acknowledgeStarted:false})).status,409);
-  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title}).getByRole('button',{name:'Cancel task…'})).toBeVisible();
-  await internalPanel.locator('.task').filter({hasText:internalInput.title}).getByRole('button',{name:'Cancel task…'}).click();
+  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title}).locator('[data-calendar-cancel]')).toBeVisible();
+  await internalPanel.locator('.task').filter({hasText:internalInput.title}).locator('[data-calendar-cancel]').click();
   const cancellationDialog=page.locator('[aria-labelledby=calendarCancelTitle]');
   await expect(cancellationDialog.getByLabel('Reason for cancelling')).toBeVisible();
   await expect(cancellationDialog.getByText('Work may already have started, or some work has been recorded. Cancelling stops only the remaining work.')).toBeVisible();
@@ -168,14 +168,14 @@ export async function exerciseFlows(h) {
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(outputDir,'crm-cancellation-mobile.png')});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.setViewportSize({width:1440,height:1000});
-  await cancellationDialog.getByRole('button',{name:'Confirm cancellation',exact:true}).click();
+  await cancellationDialog.getByRole('button',{name:'Remove task',exact:true}).click();
   await expect(cancellationDialog).not.toBeVisible({timeout:20000});await sync();
   const cancelled=await task(cancelTask.id);assert.equal(cancelled.calendar.status,'cancelled');assert.equal(cancelled.done,false);
   assert.equal(cancelled.calendar.cancellation.by,(await requester.auth.getUser()).data.user.email);
   const afterCancel=await state();assert.equal(afterCancel.items.find(i=>i.id===cancelTask.calendar.workItemId).status,'cancelled');
   assert.equal(afterCancel.sessions.filter(s=>s.workItemId===cancelTask.calendar.workItemId&&s.status==='planned').length,0);
   assert.ok(afterCancel.events.some(e=>e.type==='crm_cancelled'&&e.summary.some(text=>text.includes('Client withdrew this request'))));
-  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title})).toContainText('Cancelled by');
+  await expect(internalPanel.locator('.task').filter({hasText:internalInput.title})).toHaveCount(0);
   console.log('PASS: stale cancellation rejected; original requester cancels from desktop/mobile CRM UI with started-work warning and attribution in both systems.');
 
   const lostCancellation=await submit('cancellations/'+lost.task.externalTaskId),cancelId=randomUUID();
