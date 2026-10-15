@@ -2,6 +2,14 @@
 
 Release procedure and verification record for the paired integration branches. Both applications, integration schemas and all 36 current CRM client matches are installed. Calendar has 47 clients after the 17 approved additions. Calendar booking, CRM assignment checks and synchronization are active. The approved live pilot passed booking, conflict/alternative previews and owner cancellation with synchronization back to CRM. The test booking is cancelled and consumes no time. Bryan authorized normal team email delivery on September 15; the Calendar notification worker is now verified in live mode.
 
+## Willian’s Calendar emails paused — October 15, 2026
+
+- Bryan requested a temporary pause for Willian Dos Santos. Updated only his existing active requester membership to `receive_updates=false` and independently read it back at 18:26:12 UTC (14:26 Indianapolis). His requester access and every other membership remain unchanged, including Kyle’s existing opt-out.
+- The existing requester-email-preferences migration suppresses Calendar work updates, draft updates, weekly summaries and CRM-linked task emails for this membership. Scheduling permissions, CRM assignment checks and completion synchronization continue normally. Authentication email and CRM’s separate email settings are outside this preference.
+- Before and after the update, Willian had no queued messages; existing history remained 161 delivered and 19 bounced. Workspace version remained 327 and saved workspace settings were identical. No work, test notification or manual delivery-worker invocation was created.
+- Validation: lint, generated-route type checking, all 1,385 unit/server tests, all four isolated database suites and the production build passed. The sandboxed build stalled; the same build succeeded outside the sandbox. Database coverage includes update/draft/weekly suppression, capture of previously queued mail, preserved requester access and CRM completion synchronization. No UI changed.
+- This is a saved production preference change; no new migration or application code is required. To resume notifications when Bryan requests it, set this same membership’s `receive_updates=true`. Do not replay historical mail.
+
 ## Requester cancellation release — September 23, 2026
 
 - Added Calendar API `GET/POST /api/integrations/crm/v1/cancellations` and migration `202609230001_crm_task_cancellation.sql`; CRM adds `deploy/calendar-cancellation.sql`, the gateway/recovery path, and a **Cancel task…** confirmation dialog. Remove × remains available for ordinary CRM tasks; linked tasks use cancellation instead. No task is physically deleted.
