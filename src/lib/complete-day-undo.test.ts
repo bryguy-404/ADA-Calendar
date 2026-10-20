@@ -10,7 +10,7 @@ const day = "2026-09-09", next = "2026-09-10", zone = "America/Indiana/Indianapo
 const at = (date: string, time: string) => localDateTime(date, time, zone);
 const now = at(day, "18:00");
 const command: WorkCommand = { type: "complete_day", itemId: "project", date: day };
-function finished(remaining: number | null = 240): AppState {
+function finished(remaining: number | null = 240): Omit<AppState, "events"> & { events: WorkEvent[] } {
   const state = createDemoState(); state.settings.reserveMinutes = 0; state.blocks = [];
   state.items = [newWorkItem(DEMO_MEMBERS[0], day, { id: "project", clientId: state.clients[0].id, title: "Fictional day work", estimatedMinutes: remaining, remainingMinutes: remaining })];
   state.sessions = [

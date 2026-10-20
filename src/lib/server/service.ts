@@ -11,8 +11,8 @@ export async function currentActor() {
 export const store = {
   getState: async (...args: Parameters<typeof getLiveState>) => demoEnabled() ? getDemoState(demoActor(args[0])) : getLiveState(...args),
   hasCommittedOperation: async (...args: Parameters<typeof hasCommittedLiveOperation>) => demoEnabled() ? hasCommittedDemoOperation(...args) : hasCommittedLiveOperation(...args),
-  commit: async (...args: Parameters<typeof commitLiveProposal>) => demoEnabled() ? commitDemoProposal(...args) : commitLiveProposal(...args),
-  request: async (...args: Parameters<typeof submitLiveRequest>) => demoEnabled() ? submitDemoRequest(...args) : submitLiveRequest(...args),
+  commit: async (...args: Parameters<typeof commitLiveProposal>) => demoEnabled() ? commitDemoProposal(args[0], args[1]) : commitLiveProposal(...args),
+  request: async (...args: Parameters<typeof submitLiveRequest>) => demoEnabled() ? submitDemoRequest(args[0], args[1], args[2]) : submitLiveRequest(...args),
   resolve: async (...args: Parameters<typeof resolveLiveRequest>) => demoEnabled() ? resolveDemoRequest(...args) : resolveLiveRequest(...args),
   undo: async (...args: Parameters<typeof undoLiveEvent>) => demoEnabled() ? undoDemoEvent(...args) : undoLiveEvent(...args),
   admin: async (...args: Parameters<typeof mutateLiveAdmin>) => demoEnabled() ? mutateDemoAdmin(...args) : mutateLiveAdmin(...args),

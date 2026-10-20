@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       if (prior || state.version > saved.response.reply.proposal.baseVersion) {
         // The underlying store checks durable idempotency, actor and exact command.
         try {
-          const latest = await store.commit(actor, saved.response.reply.proposal);
+          const latest = await store.commit(actor, saved.response.reply.proposal, state);
           return respond({ reply: { kind: "answer", message: "That booking change was already saved. No duplicate changes were made.", sources: saved.response.reply.sources }, operationId: input.operationId, stateVersion: latest.version, asOf: now, contextDate, state: latest, proposal: saved.response.reply.proposal } satisfies WorkspaceChatResponse);
         } catch (error) {
           // If not committed before, its old baseVersion guarantees no new write.
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       }
       assertChatProposal(fresh, actor);
       try {
-        const latest = await store.commit(actor, fresh);
+        const latest = await store.commit(actor, fresh, state);
         return respond({ reply: { kind: "answer", message: saved.command.type === "reorder_day" ? "The order is saved. The same tasks and session lengths were preserved; no tasks were created or deleted." : "The booking changes are saved. No projects were created or deleted, and project effort estimates were left unchanged.", sources: freshReply.sources }, operationId: input.operationId, stateVersion: latest.version, asOf: new Date().toISOString(), contextDate, state: latest, proposal: fresh } satisfies WorkspaceChatResponse);
       } catch (error) {
         // Re-read after a racing calendar edit or clock boundary; never substitute

@@ -1,6 +1,7 @@
 import { isInstant, localDate } from "./time";
 import { commandSchema } from "./schemas";
-import type { ScheduleSnapshot, WorkEvent } from "./types";
+import type { ScheduleSnapshot, WorkActivity, WorkEvent } from "./types";
+import { hasEventSnapshots } from "./work-activity";
 
 /** Publish only the narrow completion identity from authoritative saved commands. */
 export function completedDayFromCommands(commands: unknown): WorkEvent["completedDay"] {
@@ -20,13 +21,14 @@ function canonical(value: unknown): string {
 /** This UI-readable check is repeated by the server and the locked SQL commit.
  * It never grants authority or replaces full restored-schedule validation. */
 export function undoUnavailableReason(
-  state: ScheduleSnapshot & { events: WorkEvent[] },
-  event: WorkEvent,
+  state: ScheduleSnapshot & { events: WorkActivity[] },
+  event: WorkActivity,
   now: string,
 ): string | null {
   if (!isInstant(now)) return "The scheduling clock is unavailable. Refresh before undoing a change.";
   if (!state.events.some(candidate=>candidate.id===event.id) || event.undoneBy || event.version!==state.version)
     return "Only the latest unchanged schedule change can be undone. A newer change was saved or this change was already undone.";
+  if (!hasEventSnapshots(event)) return "Refresh to check the latest change before undoing it.";
   const before=new Map(event.before.sessions.map(session=>[session.id,session]));
   const after=new Map(event.after.sessions.map(session=>[session.id,session]));
   // Only this latest day-completion event may reverse its own recorded status.

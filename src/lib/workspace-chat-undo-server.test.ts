@@ -102,21 +102,21 @@ describe("undoing an existing-project chat booking change",()=>{
   it("can undo an unworked added booking after its scheduled start",async()=>{
     const saved=await save({...add,request:{...add.request,startDate:date,endDate:date}});vi.setSystemTime(new Date(at("11:01")));
     expect(undoUnavailableReason(saved,saved.events[0],at("11:01"))).toBeNull();
-    const response=await send("undo",{id:saved.events[0].id});expect(response.status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before.sessions);
+    const response=await send("undo",{id:saved.events[0].id});expect(response.status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before!.sessions);
   });
   it.each([undefined,60])("can undo a whole/partial move after its planned destination time (%s)",async minutes=>{
     await demoTransaction(state=>{state.sessions[0].start=at("09:00","2026-09-11");state.sessions[0].end=at("11:00","2026-09-11");});
     const saved=await save({type:"move_booking",sessionId:"build-session",date,...(minutes?{minutes}:{})});vi.setSystemTime(new Date(at("09:01")));
-    expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before.sessions);
+    expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before!.sessions);
   });
   it("can undo resumed waiting-project hours if they remain planned",async()=>{
     await demoTransaction(state=>{state.items[0].estimatedMinutes=null;state.items[0].remainingMinutes=null;state.items[0].status="waiting";state.items[0].blockedReason="Awaiting details";state.sessions=state.sessions.filter(s=>s.workItemId!=="build");});
     const saved=await save({...add,request:{...add.request,startDate:date,endDate:date,resumeWaiting:true}});vi.setSystemTime(new Date(at("09:01")));
-    expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before.sessions);
+    expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before!.sessions);
   });
   it("can restore the exact original unworked booking after its scheduled time",async()=>{
     const saved=await save({type:"move_booking",sessionId:"build-session",date:next});vi.setSystemTime(new Date(at("09:01")));
-    expect(undoUnavailableReason(saved,saved.events[0],at("09:01"))).toBeNull();expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before.sessions);
+    expect(undoUnavailableReason(saved,saved.events[0],at("09:01"))).toBeNull();expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);expect((await getDemoState(owner)).sessions).toEqual(saved.events[0].before!.sessions);
   });
   it("moves missed work after 5 PM and Undo restores the same uncompleted hours",async()=>{
     vi.setSystemTime(new Date(at("18:38")));
@@ -130,14 +130,14 @@ describe("undoing an existing-project chat booking change",()=>{
   });
   it("does not confuse unchanged historical JSON property order with a booking edit",async()=>{
     await demoTransaction(state=>{state.sessions.push({...state.sessions[0],id:"history",start:at("09:00","2026-09-08"),end:at("11:00","2026-09-08"),status:"completed"});});
-    const saved=await save(resize),copy=structuredClone(saved),historical=copy.events[0].before.sessions.find(s=>s.id==="history")!;
-    copy.events[0].before.sessions=copy.events[0].before.sessions.map(s=>s.id==="history"?Object.fromEntries(Object.entries(historical).reverse()) as typeof historical:s);
+    const saved=await save(resize),copy=structuredClone(saved),historical=copy.events[0].before!.sessions.find(s=>s.id==="history")!;
+    copy.events[0].before!.sessions=copy.events[0].before!.sessions.map(s=>s.id==="history"?Object.fromEntries(Object.entries(historical).reverse()) as typeof historical:s);
     expect(undoUnavailableReason(copy,copy.events[0],at("08:00"))).toBeNull();expect((await send("undo",{id:saved.events[0].id})).status).toBe(200);
   });
   it("blocks changes to recorded completed/cancelled history regardless of clock time",async()=>{
     const saved=await save(resize);
     for(const status of ["completed","cancelled"] as const){
-      const copy=structuredClone(saved);copy.sessions[0].status=status;copy.events[0].before.sessions[0]={...copy.sessions[0],focusOverrideMinutes:30};
+      const copy=structuredClone(saved);copy.sessions[0].status=status;copy.events[0].before!.sessions[0]={...copy.sessions[0],focusOverrideMinutes:30};
       expect(undoUnavailableReason(copy,copy.events[0],at("09:01"))).toContain("completed or cancelled");
     }
   });

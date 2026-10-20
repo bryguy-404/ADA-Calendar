@@ -17,6 +17,12 @@ const HORIZON_DAYS = 366;
 const schedulingFields = new Set(["estimatedMinutes", "remainingMinutes", "targetDate", "deadline", "dateConstraints", "dailyPlan", "priorityId", "status"]);
 
 const clone = <T>(value: T): T => structuredClone(value);
+// AppState is structurally a ScheduleSnapshot, but also carries activity, mail
+// and other UI data. Never deep-copy that unrelated history while planning.
+const cloneSchedule = (snapshot: ScheduleSnapshot): ScheduleSnapshot => {
+  const { workspaceId, version, settings, clients, priorities, items, sessions, blocks } = snapshot;
+  return clone({ workspaceId, version, settings, clients, priorities, items, sessions, blocks });
+};
 const uuid = () => crypto.randomUUID();
 const liveItem = (item: WorkItem) => item.status === "planned" || item.status === "in_progress";
 // Completed reservations are history, not capacity. In particular an early completion
@@ -361,7 +367,7 @@ function trimExcess(snapshot: ScheduleSnapshot, item: WorkItem, now: string, ove
 /** Smart fitting is an append-only scheduling operation, not ordinary replanning.
  * Keep it separate so a priority, target, or adjacent edit cannot authorize displacement. */
 function planSmartFits(snapshot: ScheduleSnapshot, commands: WorkCommand[], actor: Actor, now: string, result: ScheduleProposal): ScheduleProposal {
-  const draft = clone(snapshot);
+  const draft = cloneSchedule(snapshot);
   const summary: string[] = [];
   const changed = new Set<string>();
   const fail = (errors: ScheduleConflict[]): ScheduleProposal => ({ ...result, status: "infeasible", conflicts: errors });
@@ -463,7 +469,7 @@ function planDayOrder(snapshot: ScheduleSnapshot, commands: WorkCommand[], now: 
   if (!parsed.success || parsed.data.type !== "reorder_day")
     return fail([conflict("invalid_reorder", "Choose a valid day and a unique ordered list of its existing work sessions.")]);
   const command = parsed.data;
-  const draft = clone(snapshot);
+  const draft = cloneSchedule(snapshot);
   const changed = new Set<string>();
   try {
     if (command.date < localDate(now, draft.settings.timeZone))
@@ -567,7 +573,7 @@ function planDayCompletion(snapshot: ScheduleSnapshot, commands: WorkCommand[], 
   if (commands.length !== 1) return fail([conflict("completion_mixed_commands", "Finish one booked day separately from other changes.")]);
   const parsed = commandSchema.safeParse(commands[0]);
   if (!parsed.success || parsed.data.type !== "complete_day") return fail([conflict("invalid_completion", "Choose an existing project and a valid day to finish.")]);
-  const command = parsed.data, draft = clone(snapshot), item = draft.items.find(candidate => candidate.id === command.itemId);
+  const command = parsed.data, draft = cloneSchedule(snapshot), item = draft.items.find(candidate => candidate.id === command.itemId);
   if (!item) return fail([conflict("unknown_work", "This project no longer exists. No work was marked complete.", [command.itemId])]);
   if (item.status === "completed" || item.status === "cancelled") return fail([conflict("inactive_work", "Reopen this project before finishing another booked day.", [item.id])]);
   try {
@@ -613,7 +619,7 @@ function planDayCompletion(snapshot: ScheduleSnapshot, commands: WorkCommand[], 
  * and completed work are not reconstructed by the general effort planner. */
 function planDayHours(snapshot: ScheduleSnapshot, command: Extract<WorkCommand, { type: "set_day_hours" }>, now: string, result: ScheduleProposal): ScheduleProposal {
   const fail = (errors: ScheduleConflict[]): ScheduleProposal => ({ ...result, status: "infeasible", conflicts: errors });
-  const draft = clone(snapshot), item = draft.items.find(candidate => candidate.id === command.itemId);
+  const draft = cloneSchedule(snapshot), item = draft.items.find(candidate => candidate.id === command.itemId);
   if (!item) return fail([conflict("unknown_work", "Choose an existing project before changing its booked days.", [command.itemId])]);
   if (["completed", "cancelled"].includes(item.status)) return fail([conflict("inactive_work", `Reopen “${item.title}” before changing its booked hours.`, [item.id])]);
   const summary: string[] = [], beforeRemaining = item.remainingMinutes;
@@ -700,7 +706,7 @@ function planBookingEdit(snapshot: ScheduleSnapshot, commands: WorkCommand[], no
   const parsed = commandSchema.safeParse(commands[0]);
   if (!parsed.success || !isBookingEdit(parsed.data)) return fail([conflict("invalid_booking_edit", "Choose valid dates and hours in 15-minute increments. Use day-hours editing to remove a booked day.")]);
   if (parsed.data.type === "set_day_hours") return planDayHours(snapshot, parsed.data, now, result);
-  const command = parsed.data, draft = clone(snapshot), summary: string[] = [];
+  const command = parsed.data, draft = cloneSchedule(snapshot), summary: string[] = [];
   try {
     const source = command.type !== "add_booking" ? draft.sessions.find(session => session.id === (command.type === "move_bookings" ? command.sessionIds[0] : command.sessionId)) : undefined;
     if (command.type !== "add_booking" && !source) return fail([conflict("unknown_session", "Choose an existing booked session before editing its hours.")]);
@@ -882,7 +888,7 @@ export function planCommands(snapshot: ScheduleSnapshot, commands: WorkCommand[]
   if (commands.some(command => command.type === "reorder_day")) return planDayOrder(snapshot, commands, now, result);
   if (commands.some(command => command.type === "fit" || command.type === "create" && command.smartFit))
     return planSmartFits(snapshot, commands, actor, now, result);
-  const draft = clone(snapshot);
+  const draft = cloneSchedule(snapshot);
   const bookingWindows = new Map<string, { startDate: string; endDate: string; dates: Set<string> }>();
   // These dates belong to this creation/approval only. Saved items remain flexible.
   const allocate = (source: ScheduleSnapshot, item: WorkItem, allocationOptions: AllocationOptions = {}) => {

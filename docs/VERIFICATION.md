@@ -2,6 +2,14 @@
 
 This records evidence for the eight phases in [the approved blueprint](BLUEPRINT.md), not a claim that hosted services have been deployed. Sample clients, the demo parser, and captured notifications are deliberately isolated from live work.
 
+## Save performance with retained history — October 20, 2026
+
+- Live state now selects activity metadata in PostgreSQL instead of transferring 200 full before/after calendars. One exact latest-event snapshot remains available for Undo; the server reloads the authoritative target before undoing. Save handlers reuse their freshly read server state, with fresh authorization, review fingerprints and the existing locked SQL checks. Scheduler drafts copy schedule fields only. No stored history, completed work or saved settings are removed or rewritten by this change.
+- `npm run test:save-performance` passed against isolated local Supabase Auth/PostgreSQL and the real Next.js API/browser. Its fictional workspace contains 69 projects, 103 sessions (101 already completed) and 200 full change snapshots. History transferred fell from **37,391,875 to 252,672 bytes (99.32%)**; the full state response was 347,044 bytes. The warmed state read took 115 ms, browser confirmation through visible completion took 709 ms, and completion/create API saves took 230/235 ms. These are local development measurements, not a promised production latency.
+- The same run verified manual editing, creation, past-day completion with visible retained history, exact Undo, unchanged pre-existing completed sessions, byte-identical hashes for all 200 original full ledger entries, and denied access after membership revocation. The screenshot was visually inspected. Fixtures are removed afterward; providers are disabled and no real email or production task was used.
+- All **1,396 unit/server tests in 75 files**, ESLint, generated route types, TypeScript and the optimized production build pass. New regression tests reject broad historical snapshot reads, verify same-request state reuse and fresh authorization, preserve concurrent-version rejection, and ensure schedule cloning never reads unrelated activity/mail.
+- All **27 browser scenarios** in the UI, booked-day completion and workspace-helper Undo suites pass, covering desktop/mobile completion, edit/create, requester booking, protected work, stale approvals, exact Undo and uncertain-response reconciliation. They use isolated demo fixtures and captured providers.
+
 ## Sticky month navigation — September 14, 2026
 
 - The month title, Previous/Next period, Today and view controls now stay beneath the sticky main header while scrolling the calendar. The date-selection panel and weekday labels follow below them; a measured toolbar height keeps the rows aligned as controls wrap or the viewport changes. All work retains its existing toolbar behavior.

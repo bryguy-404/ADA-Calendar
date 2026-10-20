@@ -1,4 +1,4 @@
-import type { Actor, AppState, WorkItem, WorkSession } from "./types";
+import type { Actor, AppState, WorkEvent, WorkItem, WorkSession } from "./types";
 import { DEFAULT_PRIORITIES, DEFAULT_SETTINGS } from "./defaults";
 import { addDays, localDate, localDateTime, nextWorkDate } from "./time";
 import { newWorkItem } from "./work";
@@ -11,7 +11,7 @@ export const DEMO_MEMBERS: Actor[] = [
 ];
 
 /** Fictional example work, isolated from real memberships and outgoing delivery. */
-export function createDemoState(now = new Date().toISOString()): AppState {
+export function createDemoState(now = new Date().toISOString()): AppState & { events: WorkEvent[] } {
   const today = localDate(now, DEFAULT_SETTINGS.timeZone);
   const start = nextWorkDate(addDays(today, 1), DEFAULT_SETTINGS);
   const yearMonth = start.slice(0, 7);

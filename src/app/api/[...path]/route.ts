@@ -143,7 +143,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       if (input.baseVersion !== undefined && input.baseVersion !== state.version && !prior) return NextResponse.json({ error: "The schedule changed. Review this updated preview.", state, proposal }, { status: 409 });
       const priorRequest = input.action === "request" && state.requests.some(request => request.id === input.operationId);
       if (!prior && !priorRequest && input.reviewFingerprint !== proposal.reviewFingerprint) return NextResponse.json({ error: "The reviewed plan changed or is missing. Review this fresh preview before saving.", state, proposal }, { status: 409 });
-      state = input.action === "request" ? await store.request(actor, proposal, input.note) : await store.commit(actor, proposal);
+      state = input.action === "request" ? await store.request(actor, proposal, input.note, state) : await store.commit(actor, proposal, state);
       return NextResponse.json({ state, proposal });
     }
     if (route === "requests/resolve") {
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
           return NextResponse.json({ error: "The calendar's scheduling rules have been updated. Submit this instruction again to review a fresh plan. Nothing has changed.", state }, { status: 409 });
         }
         proposal = planCommands(state, commands, actor, { operationId: input.operationId, approveDisplacement: actor.role === "owner" });
-        if (committed || (proposal.status === "ready" && !proposal.requiresApproval)) state = await store.commit(actor, proposal);
+        if (committed || (proposal.status === "ready" && !proposal.requiresApproval)) state = await store.commit(actor, proposal, state);
       } else if (interpretation.kind === "email_draft" && interpretation.emailDraft) {
         if (actor.role !== "owner") throw new Error("Only Bryan can draft team update emails.");
         const draftId = `assistant-${createHash("sha256").update(`${actor.id}:${input.operationId}`).digest("hex")}`;

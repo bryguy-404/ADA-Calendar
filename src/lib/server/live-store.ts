@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import type { Actor, AppState, Attachment, Client, EmailDraft, PendingRequest, Priority, ScheduleProposal, ScheduleSnapshot, WorkEvent, WorkspaceSettings } from "../types";
+import type { Actor, AppState, Attachment, Client, EmailDraft, PendingRequest, Priority, ScheduleProposal, ScheduleSnapshot, WorkActivity, WorkEvent, WorkspaceSettings } from "../types";
 import { planCommands, validateSchedule } from "../scheduler";
 import { buildCommitNotifications, buildDraftNotifications, buildRequestNotifications } from "./email";
 import { assertLiveActor, requireOwner } from "./auth";
@@ -8,6 +8,11 @@ import { getSupabaseAdminClient, getSupabaseServerClient } from "./supabase";
 import { assertReviewedProposal } from "./preview";
 import type { AIOperationInput, AIOperationResult, PrivateAIOperation } from "./demo-store";
 import { completedDayFromCommands, undoUnavailableReason } from "../undo";
+import { hasEventSnapshots } from "../work-activity";
+
+// Select JSON fields in PostgreSQL: removing snapshots after fetching body would
+// still transfer and parse every historical copy of the entire calendar.
+const activityFields = "id,operationId:operation_id,actorId:actor_id,version,actorName:body->>actorName,type:body->>type,summary:body->summary,itemIds:body->itemIds,createdAt:body->>createdAt,undoneBy:body->>undoneBy";
 
 function check(error: { message: string } | null, operation: string) {
   if (error) throw new Error(`${operation}: ${error.message}`);
@@ -28,20 +33,26 @@ export async function getLiveState(actorId: string): Promise<AppState> {
   const result = await Promise.all([
     db.rpc("read_schedule_snapshot"),
     db.from("workspace_members").select("user_id,name,email,role").eq("workspace_id", workspaceId).eq("active", true),
-    db.from("work_events").select("body,operation_payload").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(200),
+    db.from("work_events").select(activityFields).eq("workspace_id", workspaceId).order("version", { ascending: false }).limit(200),
     db.from("pending_requests").select("body").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(200),
     db.from("notifications").select("*").eq("workspace_id", workspaceId).order("created_at", { ascending: false }).limit(300),
     db.from("attachments").select("*").eq("workspace_id", workspaceId).is("removed_at", null).eq("upload_status", "ready"),
     db.from("email_drafts").select("*").eq("workspace_id", workspaceId).eq("author_id", actor.id).order("created_at", { ascending: false }).limit(100),
     db.from("ai_usage").select("amount_usd").eq("workspace_id", workspaceId).gte("created_at", new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString()),
+    // Only the latest event can be undone. Keep its exact snapshots for the UI;
+    // older snapshots remain stored and are never loaded for ordinary saves.
+    db.from("work_events").select("body,operation_payload").eq("workspace_id", workspaceId).order("version", { ascending: false }).limit(1).maybeSingle(),
   ]);
   for (const row of result) check(row.error, "Read live workspace");
   const snapshot = result[0].data as ScheduleSnapshot | null;
   if (!snapshot || snapshot.workspaceId !== workspaceId) throw new Error("Your workspace is no longer available. Sign in again.");
+  const latest = result[8].data;
+  const events = (result[2].data as unknown as WorkActivity[]).map(event => latest?.body.id === event.id
+    ? { ...latest.body, completedDay: completedDayFromCommands(latest.operation_payload) } as WorkEvent : event);
   return {
     ...snapshot,
     actor, members: result[1].data!.map((row) => ({ id: row.user_id, name: row.name, email: row.email, role: row.role })),
-    events: result[2].data!.map((row) => ({ ...row.body, completedDay: completedDayFromCommands(row.operation_payload) })), requests: result[3].data!.map((row) => row.body),
+    events, requests: result[3].data!.map((row) => row.body),
     notifications: result[4].data!.map((n) => ({ id: n.id, eventId: n.event_id, recipient: n.recipient, recipientName: n.recipient_name, subject: n.subject, body: n.body, status: n.status, attempts: n.attempts, providerId: n.provider_id, createdAt: n.created_at, lastError: n.last_error })),
     attachments: result[5].data!.map((a) => ({ id: a.id, workItemId: a.work_item_id, name: a.name, contentType: a.content_type, size: Number(a.size), path: a.path, uploadedBy: a.uploaded_by, createdAt: a.created_at, removedAt: a.removed_at })),
     emailDrafts: result[6].data!.map((d) => ({ id: d.id, authorId: d.author_id, itemId: d.item_id, subject: d.subject, body: d.body, status: d.status, createdAt: d.created_at })),
@@ -84,9 +95,13 @@ export async function hasCommittedLiveOperation(actor: Actor, operationId: strin
   return true;
 }
 
-export async function commitLiveProposal(actor: Actor, proposal: ScheduleProposal): Promise<AppState> {
+export async function commitLiveProposal(actor: Actor, proposal: ScheduleProposal, serverState?: AppState): Promise<AppState> {
   const trusted = await assertLiveActor(actor);
-  const state = await getLiveState(trusted.id);
+  // Only the route's freshly read server state may be reused, never a request
+  // body or cross-request cache. Recheck identity here; SQL locks/rechecks the
+  // authoritative membership, workspace version, schedule and operation ID.
+  const state = serverState ?? await getLiveState(trusted.id);
+  if (state.actor.id !== trusted.id) throw new Error("The signed-in account does not match this workspace.");
   // Database idempotency remains authoritative even when recent history is truncated.
   const db = await getSupabaseServerClient();
   const previous = await db.from("work_events").select("id,actor_id,operation_payload").eq("workspace_id", state.workspaceId).eq("operation_id", proposal.operationId).maybeSingle();
@@ -103,10 +118,11 @@ export async function commitLiveProposal(actor: Actor, proposal: ScheduleProposa
   return persist(state, fresh);
 }
 
-export async function submitLiveRequest(actor: Actor, proposal: ScheduleProposal, note = ""): Promise<AppState> {
+export async function submitLiveRequest(actor: Actor, proposal: ScheduleProposal, note = "", serverState?: AppState): Promise<AppState> {
   const trusted = await assertLiveActor(actor);
   if (trusted.role !== "requester") throw new Error("Only requesters submit priority requests.");
-  const state = await getLiveState(trusted.id);
+  const state = serverState ?? await getLiveState(trusted.id);
+  if (state.actor.id !== trusted.id) throw new Error("The signed-in account does not match this workspace.");
   const db = await getSupabaseServerClient();
   const [priorEvent, priorRequest] = await Promise.all([
     db.from("work_events").select("actor_id,operation_payload").eq("workspace_id", state.workspaceId).eq("operation_id", proposal.operationId).maybeSingle(),
@@ -153,8 +169,14 @@ export async function resolveLiveRequest(actor: Actor, requestId: string, decisi
 export async function undoLiveEvent(actor: Actor, eventId: string): Promise<AppState> {
   const trusted = await assertLiveActor(actor); requireOwner(trusted);
   const state = await getLiveState(trusted.id);
-  const event = state.events.find((e) => e.id === eventId);
+  // Always reload the full target from the authenticated ledger. Activity rows
+  // are summaries, and a client-supplied snapshot is never Undo authority.
+  const db = await getSupabaseServerClient();
+  const saved = await db.from("work_events").select("body,operation_payload").eq("workspace_id", state.workspaceId).eq("id", eventId).maybeSingle();
+  check(saved.error, "Read change for Undo");
+  const event: WorkEvent | null = saved.data ? { ...saved.data.body, completedDay: completedDayFromCommands(saved.data.operation_payload) } : null;
   if (!event) throw new Error("This schedule change is no longer available to undo.");
+  if (!hasEventSnapshots(event)) throw new Error("The original schedule is unavailable. Refresh before undoing.");
   const now = new Date().toISOString();
   const unavailable = undoUnavailableReason(state, event, now);
   if (unavailable) throw new Error(unavailable);

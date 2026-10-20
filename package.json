@@ -16,6 +16,7 @@
     "test:e2e": "playwright test",
     "test:crm-db": "node scripts/crm-foundation-db-test.mjs",
     "test:crm-fullstack": "node --conditions=react-server --import tsx scripts/crm-fullstack/run.mjs",
+    "test:save-performance": "node --conditions=react-server --import tsx scripts/save-performance-test.mjs",
     "test:container": "node scripts/container-smoke.mjs",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "test:crm-scheduling": "node --conditions=react-server --import tsx scripts/crm-scheduling-smoke.ts",

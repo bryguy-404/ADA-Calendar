@@ -11,13 +11,14 @@ import { attachmentPath, canAccessAttachmentWork, validateUpload } from "./uploa
 import { assertReviewedProposal } from "./preview";
 import type { PersonalNote } from "../notes";
 import { completedDayFromCommands, undoUnavailableReason } from "../undo";
+import { compactActivity } from "../work-activity";
 
 export type AIOperationInput = { id: string; kind: "assistant" | "transcribe"; inputHash: string; reserveUsd: number; parentId?: string };
 export type AIOperationResult = { status: "claimed" | "processing" | "completed" | "failed"; result: unknown | null };
 export type PrivateAIOperation = { kind: string; status: "processing" | "completed" | "failed"; result: unknown };
 type Reservation = { actorId: string; amountUsd: number; settled: boolean };
 type StoredAIOperation = PrivateAIOperation & { actorId: string; workspaceId: string; inputHash: string; parentId?: string };
-type StoredState = AppState & { aiReservations?: Record<string, Reservation>; aiMonth?: string; aiOperations?: Record<string, StoredAIOperation>; operationHashes?: Record<string, string>; pendingAttachmentIds?: string[];
+type StoredState = Omit<AppState, "events"> & { events: WorkEvent[]; aiReservations?: Record<string, Reservation>; aiMonth?: string; aiOperations?: Record<string, StoredAIOperation>; operationHashes?: Record<string, string>; pendingAttachmentIds?: string[];
   personalNotes?: { workspaceId: string; authorId: string; note: PersonalNote }[] };
 const globalStore = globalThis as unknown as { adaWriteQueue?: Promise<unknown> };
 export function demoEnabled() { return process.env.NODE_ENV !== "production" && process.env.ADA_DEMO_MODE === "true"; }
@@ -73,6 +74,7 @@ function visible(state: StoredState, actor: Actor): AppState {
   const { aiReservations: _reservations, aiMonth: _month, aiOperations: _operations, operationHashes: _hashes, pendingAttachmentIds: _pending, personalNotes: _notes, ...publicState } = state;
   void _reservations; void _month; void _operations; void _hashes; void _notes;
   return { ...publicState, actor,
+    events: compactActivity(state.events),
     requests: state.requests.filter(r => actor.role === "owner" || r.requesterId === actor.id),
     notifications: state.notifications.filter(n => actor.role === "owner" || n.recipient === actor.email),
     emailDrafts: state.emailDrafts.filter(d => d.authorId === actor.id),

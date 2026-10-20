@@ -88,6 +88,9 @@ export interface WorkEvent {
   /** Derived from the saved command; never inferred from an event's prose. */
   completedDay?: { itemId: string; date: string };
 }
+/** Activity needs metadata; only the latest change needs snapshots for the Undo UI.
+ * Every full WorkEvent remains in the server ledger. */
+export type WorkActivity = Omit<WorkEvent, "before" | "after"> & Partial<Pick<WorkEvent, "before" | "after">>;
 export interface PendingRequest {
   id: string; requesterId: string; requesterName: string; proposal: ScheduleProposal;
   status: "pending" | "approved" | "declined" | "needs_information";
@@ -106,7 +109,7 @@ export interface Attachment {
 }
 export interface EmailDraft { id: string; authorId: string; itemId: string | null; subject: string; body: string; status: "draft" | "sent" | "dismissed"; createdAt: string }
 export interface AppState extends ScheduleSnapshot {
-  actor: Actor; members: Actor[]; requests: PendingRequest[]; events: WorkEvent[];
+  actor: Actor; members: Actor[]; requests: PendingRequest[]; events: WorkActivity[];
   notifications: Notification[]; attachments: Attachment[]; emailDrafts: EmailDraft[];
   aiUsageUsd: number; mode: "demo" | "live";
 }

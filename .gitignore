@@ -2,6 +2,7 @@ node_modules/
 .next/
 .next-e2e/
 .next-crm-integration/
+.next-save-performance/
 .next-password-check/
 .data-e2e/
 out/

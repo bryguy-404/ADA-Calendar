@@ -98,6 +98,8 @@ Bryan wears four hats: Web (edits/builds), IT, Landings, and Software. Kyle, Wil
 
 Persist committed changes, immutable event and per-recipient notification jobs in one database transaction. Prevent overlap and concurrent stale commits. Retry using stable operation/event IDs. Recompute stale previews; never turn a stale clean-fit request into an authorized displacement. Undo is a version-aware compensating change.
 
+**October 20 save performance:** Keep all completed sessions, work items and full stored change snapshots. Ordinary AppState reads project the latest 200 activity entries to metadata in PostgreSQL and load full snapshots only for the latest event's Undo checks. Undo reloads its exact authorized ledger entry. Scheduling drafts clone only schedule fields, and commit/request handlers may reuse state freshly read by that same server request. They still recheck membership, replan commands, verify the reviewed proposal and rely on the locked SQL version/authorization checks. No history cleanup, retention change, schema migration or shared cross-request cache is involved.
+
 Supabase Queues and Cron run bounded mail workers independently of the browser. Track provider IDs, retries, failures and uncertain outcomes. Resend idempotency lasts 24h; uncertain older sends require reconciliation. Verify webhook signatures and handle repeated/out-of-order callbacks. Keep production credentials server-side.
 
 OpenAI Responses model `gpt-5.6-sol`, medium reasoning, strict schema; `gpt-transcribe` recorded speech. Warn at $20 monthly usage and pause new AI calls at $25 until owner raises allowance. Manual operations remain available. Approximate total operating target $100; Railway is usage-priced, so report observed costs, not a guaranteed fixed total.

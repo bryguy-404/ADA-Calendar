@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, LoaderCircle, RefreshCw, Undo2 } from "lucide-react";
-import type { AppState, ScheduleProposal, WorkEvent } from "@/lib/types";
+import type { AppState, ScheduleProposal, WorkActivity } from "@/lib/types";
 import { CALENDAR_MOVE_PREFIX, calendarBookingMovePreview, calendarBookingMoveSourceUnavailableReason, calendarBookingMoveTargetUnavailableReason, latestCalendarBookingMove, type CalendarBookingMoveSelection } from "@/lib/calendar-booking-move";
 import { undoUnavailableReason } from "@/lib/undo";
 import { localDate } from "@/lib/time";
@@ -140,7 +140,7 @@ function CalendarBookingMoveController({ state, selection, onClose, onState, onI
       }
     } finally { writeInFlight.current = false; if (alive.current) { inFlight.current = false; setBusy(null); } }
   }
-  async function undoMove(event: WorkEvent) {
+  async function undoMove(event: WorkActivity) {
     if (inFlight.current || unknownRef.current || preview && selection || undoUnavailableReason(latest.current.state, event, new Date().toISOString())) return;
     inFlight.current = true; writeInFlight.current = true; setBusy("undo"); setError(""); setNotice("");
     const pending: UnknownResult = { kind: "undo", eventId: event.id };
