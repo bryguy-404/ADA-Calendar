@@ -2,6 +2,13 @@
 
 This records evidence for the eight phases in [the approved blueprint](BLUEPRINT.md), not a claim that hosted services have been deployed. Sample clients, the demo parser, and captured notifications are deliberately isolated from live work.
 
+## Completed projects retain Calendar history — October 20, 2026
+
+- Calendar now includes completed projects on their recorded work dates in month, week, day and agenda. Finished hours retain their checkmarks, dates and read-only behavior; old future windows and gaps do not become completed spans. A project with no recorded completed sessions has a dated **Completed** marker without synthetic hours. Existing filters and active workload counts retain their meanings. This is a display change with no migration, data rewrite, scheduler change or new provider call.
+- All **1,401 unit/server tests in 75 files**, ESLint, generated-route TypeScript checks and the optimized production build pass. Regression coverage includes exact recorded dates, closed ongoing projects, cancelled/future session exclusion, timezone boundaries, legacy completion-date fallback, project filters, reopening and unchanged input records.
+- All **20 browser scenarios** in booked-day completion and calendar movement pass. Desktop/mobile checks cover full project completion after finishing a day, all four calendar views, retained history after reload for a viewer, no movement/resizing of finished work, and completion markers without hours. Desktop/mobile screenshots were visually inspected.
+- `npm run test:crm-fullstack` passed with both actual local apps and isolated Supabase Auth/PostgreSQL. Finishing a day leaves CRM open; completing the project from the browser marks the existing CRM task done and preserves the exact stored completed-session row after reload. Completing without recorded hours leaves a marker; exact Undo removes that marker and reopens CRM. Existing offline assignment retry, removal, cancellation and mapping checks also pass. Fixtures are cleaned up, providers are captured/disabled, and no real work or outgoing email was used.
+
 ## Save performance with retained history — October 20, 2026
 
 - Live state now selects activity metadata in PostgreSQL instead of transferring 200 full before/after calendars. One exact latest-event snapshot remains available for Undo; the server reloads the authoritative target before undoing. Save handlers reuse their freshly read server state, with fresh authorization, review fingerprints and the existing locked SQL checks. Scheduler drafts copy schedule fields only. No stored history, completed work or saved settings are removed or rewritten by this change.

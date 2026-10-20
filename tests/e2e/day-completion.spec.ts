@@ -11,7 +11,7 @@ import { asActor, origin, state } from "./helpers";
 // Authenticated persistence/authorization are covered by day-completion-server.
 const now = "2026-09-09T22:38:00Z", dates = ["2026-09-09", "2026-09-10", "2026-09-11"];
 const title = "Fictional three-day edits", itemId = "three-day-completion";
-async function setup(page: Page, width: number, mixedUnknown = false) {
+async function setup(page: Page, width: number, mixedUnknown = false, unbooked = false) {
   await asActor(page.request, "bryan");
   const stored = await state(page.request); expect(stored.mode).toBe("demo");
   let fixture: AppState = { ...createDemoState(now), workspaceId: stored.workspaceId, actor: stored.actor,
@@ -29,6 +29,10 @@ async function setup(page: Page, width: number, mixedUnknown = false) {
     fixture.sessions[0].protected = true;
     fixture.sessions.push({ ...fixture.sessions[0], id: "second-fragment", start: at(dates[0], "10:00"), end: at(dates[0], "10:45"), protected: false },
       { ...fixture.sessions[0], id: "recorded-history", start: at(dates[0], "11:00"), end: at(dates[0], "11:30"), status: "completed", protected: false });
+  }
+  if (unbooked) {
+    fixture.items[0] = { ...fixture.items[0], timelineMode: "span", windowEnd: null, estimatedMinutes: null, remainingMinutes: null, dailyPlan: undefined };
+    fixture.sessions = [];
   }
   const before = structuredClone(fixture), actions: string[] = [], commands: WorkCommand[][] = [];
   await page.route(`${origin}/api/state`, route => route.fulfill({ json: fixture }));
@@ -50,7 +54,10 @@ async function setup(page: Page, width: number, mixedUnknown = false) {
   // simulated today explicitly before verifying agenda and timed views.
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByRole("button", { name: "month", exact: true }).click();
-  return { before, actions, commands, current: () => fixture, changeFromAnotherTab: () => {
+  return { before, actions, commands, current: () => fixture, viewAsViewer: async () => {
+    await asActor(page.request, "viewer");
+    fixture = { ...fixture, actor: (await state(page.request)).actor };
+  }, changeFromAnotherTab: () => {
     fixture = structuredClone(fixture); fixture.version++;
     fixture.sessions[0].end = at(dates[0], "11:00"); fixture.items[0].remainingMinutes = 240; fixture.items[0].dailyPlan![0].minutes = 120;
   } };
@@ -147,3 +154,72 @@ test("reviews authoritative hours when another tab changes the day before comple
   expect(context.current().items[0]).toMatchObject({ estimatedMinutes: 180, remainingMinutes: 120, status: "planned" });
   expect(context.current().sessions).toEqual(changed.sessions.map((session, index) => index === 0 ? { ...session, status: "completed" } : session));
 });
+
+for (const width of [1440, 390]) {
+  test(`project completion retains finished work across all calendar views at ${width}px`, async ({ page }, info) => {
+    const context = await setup(page, width), dialog = await openDetails(page);
+    const first = dialog.locator(`[data-work-date="${dates[0]}"]`);
+    await first.getByRole("button", { name: "Finish this day", exact: true }).click();
+    await first.getByRole("button", { name: "Confirm day finished", exact: true }).click();
+    await expect(first).toContainText("1h done");
+    expect(context.current().items[0].status).toBe("planned");
+    const recorded = structuredClone(context.current().sessions[0]);
+    await dialog.getByRole("button", { name: "Mark project complete", exact: true }).click();
+    await expect(dialog.getByText("completed", { exact: true })).toBeVisible();
+    expect(context.current().items[0].status).toBe("completed");
+    expect(context.current().sessions.find(session => session.id === recorded.id)).toEqual(recorded);
+    expect(context.current().sessions.some(session => session.status === "planned")).toBe(false);
+    await dialog.getByRole("button", { name: "Close dialog", exact: true }).click();
+    await expect(calendar(page).locator(`[data-completed-date="${dates[0]}"]`)).toContainText("1h done");
+    await expect(calendar(page).locator(".project-ribbon-lane")).toHaveCount(1);
+    await expect(calendar(page).locator("[data-booking-date]")).toHaveCount(0);
+    await captureCompletedWeek(page, info.outputPath(`completed-project-${width}.png`));
+    await page.getByRole("button", { name: "agenda", exact: true }).click();
+    await expect(page.locator('.completed-agenda-session[data-session-id="day-0"]')).toBeVisible();
+    for (const view of ["week", "day"]) {
+      await page.getByRole("button", { name: view, exact: true }).click();
+      const done = page.locator('.completed-time-session[data-session-id="day-0"]');
+      await expect(done).toBeVisible();
+      await expect(done).not.toHaveClass(/fc-event-draggable|fc-event-resizable/);
+      await expect(page.locator('[data-session-status="planned"]')).toHaveCount(0);
+    }
+    // A later read still shows the same history, including to a read-only boss.
+    await context.viewAsViewer();
+    await page.reload();
+    await page.getByRole("button", { name: "agenda", exact: true }).click();
+    const refreshed = page.waitForResponse(`${origin}/api/state`);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus"))); await refreshed;
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+    await expect(page.locator('.completed-agenda-session[data-session-id="day-0"]')).toBeVisible();
+    await page.locator('.completed-agenda-session[data-session-id="day-0"]').click();
+    await expect(dialog.getByText("completed", { exact: true })).toBeVisible();
+    await expect(dialog.locator(`[data-work-date="${dates[0]}"]`)).toContainText("1h done");
+    await expect(dialog.getByText("Recorded work days", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Edit details", exact: true })).toHaveCount(0);
+  });
+
+  test(`unbooked completion has a dated marker without synthetic hours at ${width}px`, async ({ page }, info) => {
+    const context = await setup(page, width, false, true), dialog = await openDetails(page);
+    await dialog.getByRole("button", { name: "Mark project complete", exact: true }).click();
+    await expect(dialog.getByText("completed", { exact: true })).toBeVisible();
+    expect(context.current().sessions).toEqual([]);
+    await dialog.getByRole("button", { name: "Close dialog", exact: true }).click();
+    const marker = page.locator(`[data-project-completion-id="${itemId}"]`);
+    await expect(marker).toHaveAttribute("data-completed-date", dates[0]);
+    await expect(marker).toHaveText("Completed");
+    await expect(calendar(page).locator(".project-ribbon-lane")).toHaveCount(1);
+    await expect(calendar(page).locator("[data-booking-date]")).toHaveCount(0);
+    await calendar(page).locator(".calendar-week").filter({ has: marker }).screenshot({ path: info.outputPath(`completion-marker-month-${width}.png`) });
+    for (const view of ["agenda", "week", "day"]) {
+      await page.getByRole("button", { name: view, exact: true }).click();
+      await expect(marker).toBeVisible();
+      await expect(marker).toContainText("No hours recorded");
+      await expect(page.locator("[data-session-id]")).toHaveCount(0);
+    }
+    await page.locator(".project-completion-markers").screenshot({ path: info.outputPath(`completion-marker-day-${width}.png`) });
+    await marker.click();
+    await expect(dialog.getByText("completed", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Completion date", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("Booked days", { exact: true })).toHaveCount(0);
+  });
+}

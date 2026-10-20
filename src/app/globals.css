@@ -2194,6 +2194,10 @@ small {
   z-index: 2;
 }
 .completed-ribbon-muted .ribbon-title { color: #adbbb2; }
+.project-completion-markers { display: grid; gap: 8px; margin-bottom: 12px; }
+.project-completion-markers button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #28302d; color: #b4c0b8; }
+.project-completion-markers button span { min-width: 0; overflow-wrap: anywhere; }
+.project-completion-markers small { display: block; margin-top: 3px; }
 .completed-ribbon-lane .ribbon-title {
   position: absolute;
   top: 1px;

@@ -55,4 +55,38 @@ describe("completed hours in calendar rendering", () => {
     const hidden = renderToStaticMarkup(createElement(Agenda, { ...props(state), items: [] }));
     expect(hidden).not.toContain('data-session-id="done"');
   });
+  it("retains a closed project's exact worked dates without spanning gaps or reserving future capacity", () => {
+    const state = fixture();
+    state.items[0] = { ...state.items[0], status: "completed", timelineMode: "span", windowEnd: null, completedAt: "2026-09-12T12:00:00Z" };
+    state.sessions[1].status = "cancelled";
+    state.sessions.push({ ...state.sessions[0], id: "earlier", start: localDateTime("2026-09-07", "09:00", state.settings.timeZone), end: localDateTime("2026-09-07", "10:00", state.settings.timeZone) });
+    const before = JSON.stringify(state);
+    const html = renderToStaticMarkup(createElement(MonthCalendar, props(state)));
+    expect(html.match(/class="project-ribbon-lane /g)).toHaveLength(2);
+    expect(html).toContain('data-completed-date="2026-09-07"');
+    expect(html).toContain('data-completed-date="2026-09-09"');
+    expect(html).not.toContain('data-booking-date=');
+    expect(html).not.toContain('class="ribbon-span"');
+    expect(html).not.toContain('class="booking-move-handle"');
+    expect(dayCapacity(state, tomorrow).plannedMinutes).toBe(0);
+    const agenda = renderToStaticMarkup(createElement(Agenda, { ...props(state), date: "2026-09-07" }));
+    expect(agenda).toContain('data-session-id="earlier"');
+    expect(agenda).toContain('data-session-id="done"');
+    expect(agenda).not.toContain('data-session-id="next"');
+    expect(JSON.stringify(state)).toBe(before);
+  });
+  it("shows completed projects without hours as one dated marker in month and agenda", () => {
+    const state = fixture();
+    state.items[0] = { ...state.items[0], status: "completed", completedAt: "2026-09-10T01:00:00Z" };
+    state.sessions = [];
+    for (const component of [MonthCalendar, Agenda]) {
+      const html = renderToStaticMarkup(createElement(component, props(state)));
+      expect(html).toContain('data-project-completion-id="project" data-completed-date="2026-09-09"');
+      expect(html).toContain("No hours recorded");
+      expect(html).not.toContain("1h done");
+      expect(html).not.toContain('data-booking-date=');
+      expect(renderToStaticMarkup(createElement(component, { ...props(state), items: [] }))).not.toContain('data-project-completion-id=');
+    }
+    expect(state.sessions).toEqual([]);
+  });
 });

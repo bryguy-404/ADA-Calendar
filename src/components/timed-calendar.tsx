@@ -10,6 +10,8 @@ import type { AppState, WorkCommand, WorkItem } from "@/lib/types";
 import { addDays, dayOfWeek, localDate, localDateTime, addMinutes, minutesBetween } from "@/lib/time";
 import { formatHours } from "@/lib/work";
 import { dateLabel, timeLabel } from "./ui";
+import { calendarHistory } from "@/lib/work-timeline";
+import { Check } from "lucide-react";
 
 const colors = {
   software: "#493f65",
@@ -35,6 +37,8 @@ export default function TimedCalendar({
   onCommand: (command: WorkCommand) => Promise<void>;
 }) {
   const start = addDays(date, -(dayOfWeek(date) % 7));
+  const history = calendarHistory(items, state.sessions, state.settings.timeZone);
+  const completions = history.completions.filter(marker => view === "day" ? marker.date === date : marker.date >= start && marker.date < addDays(start, 7));
   const backgrounds = Array.from({ length: 7 }, (_, i) =>
     addDays(start, i),
   ).flatMap((d) => [
@@ -72,6 +76,14 @@ export default function TimedCalendar({
   ]);
   return (
     <div className="timed-calendar" data-color-scheme="dark">
+      {completions.length > 0 && <section className="project-completion-markers" aria-label="Completed projects">
+        {completions.map(({ item, date: completedDate }) => (
+          <button type="button" key={item.id} data-project-completion-id={item.id} data-completed-date={completedDate} onClick={() => onSelect(item.id)}>
+            <Check size={16} aria-hidden="true" />
+            <span><strong>{item.title} · Completed</strong><small>{state.clients.find(client => client.id === item.clientId)?.name} · {dateLabel(completedDate)} · No hours recorded</small></span>
+          </button>
+        ))}
+      </section>}
       <Calendar
         key={`${view}-${date}-${state.version}`}
         plugins={[timeGridPlugin, interactionPlugin, classicPlugin]}
@@ -105,12 +117,7 @@ export default function TimedCalendar({
             className: `timed-fixed-block fixed-block-${b.kind}`,
             extendedProps: { blockId: b.id },
           })),
-          ...state.sessions
-            .filter(
-              (s) =>
-                s.status !== "cancelled" &&
-                items.some((i) => i.id === s.workItemId),
-            )
+          ...history.sessions
             .map((s) => {
               const item = items.find((i) => i.id === s.workItemId)!;
               const completed = s.status === "completed";

@@ -7,17 +7,38 @@ export function effectiveTimelineMode(item: WorkItem, sessions: readonly WorkSes
 
 /** Read-only display projection; never invents reservations or rewrites legacy JSON. */
 export function workTimeline(item: WorkItem, sessions: readonly WorkSession[], timeZone: string): { mode: "bookings" | "span"; start: string; end: string | null } | null {
+  if (item.status === "completed") {
+    const dates = sessions.filter(session => session.workItemId === item.id && session.status === "completed")
+      .map(session => localDate(session.start, timeZone)).sort();
+    const completed = localDate(item.completedAt ?? item.updatedAt, timeZone);
+    return { mode: "bookings", start: dates[0] ?? completed, end: dates.at(-1) ?? completed };
+  }
   const mode = effectiveTimelineMode(item, sessions);
   if (mode === "bookings") {
     const dates = sessions.filter(session => session.workItemId === item.id && session.status !== "cancelled").map(session => localDate(session.start, timeZone)).sort();
     return dates.length ? { mode, start: dates[0], end: dates.at(-1)! } : null;
   }
   let end = item.windowEnd;
-  if (item.status === "completed" || item.status === "cancelled") {
+  if (item.status === "cancelled") {
     const closed = localDate(item.completedAt ?? item.updatedAt, timeZone);
     end = end && end < closed ? end : closed;
   }
   return { mode, start: item.windowStart, end };
+}
+
+/** Calendar display only. Completion markers are never synthetic work sessions. */
+export function calendarHistory(items: readonly WorkItem[], sessions: readonly WorkSession[], timeZone: string) {
+  const visibleItems = items.filter(item => item.status !== "cancelled");
+  const byId = new Map(visibleItems.map(item => [item.id, item]));
+  const visibleSessions = sessions.filter(session => {
+    const item = byId.get(session.workItemId);
+    return item && session.status !== "cancelled" && (item.status !== "completed" || session.status === "completed");
+  });
+  const recorded = new Set(visibleSessions.filter(session => session.status === "completed").map(session => session.workItemId));
+  const completions = visibleItems.filter(item => item.status === "completed" && !recorded.has(item.id))
+    .map(item => ({ item, date: localDate(item.completedAt ?? item.updatedAt, timeZone) }))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.item.id.localeCompare(b.item.id));
+  return { items: visibleItems, sessions: visibleSessions, completions };
 }
 
 /** Completed hours are display history; only planned sessions can reserve or move. */

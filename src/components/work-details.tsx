@@ -202,6 +202,7 @@ export function WorkDetails({
     .sort((a, b) => a.start.localeCompare(b.start));
   const visibleSessions = state.sessions.filter(session => session.workItemId === item.id && session.status !== "cancelled")
     .sort((a, b) => a.start.localeCompare(b.start));
+  const timeline = workTimeline(item, visibleSessions, state.settings.timeZone);
   const sessionDays = [...new Set(visibleSessions.map(session => localDate(session.start, state.settings.timeZone)))];
   const attachments = state.attachments.filter(
     (a) => a.workItemId === item.id && !a.removedAt,
@@ -317,8 +318,8 @@ export function WorkDetails({
       </div>
       <dl className="detail-dates">
         <div>
-          <dt>{workTimeline(item, state.sessions, state.settings.timeZone)?.mode === "span" ? "Project span" : "Booked days"}</dt>
-          <dd>{(() => { const timeline = workTimeline(item, state.sessions, state.settings.timeZone); return timeline ? `${dateLabel(timeline.start)} → ${timeline.end ? dateLabel(timeline.end) : "Until completed or cancelled"}` : "No hours booked"; })()}</dd>
+          <dt>{item.status === "completed" ? visibleSessions.some(session => session.status === "completed") ? "Recorded work days" : "Completion date" : timeline?.mode === "span" ? "Project span" : "Booked days"}</dt>
+          <dd>{timeline ? timeline.start === timeline.end ? dateLabel(timeline.start) : `${dateLabel(timeline.start)} → ${timeline.end ? dateLabel(timeline.end) : "Until completed or cancelled"}` : "No hours booked"}</dd>
         </div>
         <div>
           <dt>Predicted finish</dt>

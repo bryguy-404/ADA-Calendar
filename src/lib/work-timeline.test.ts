@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEMO_MEMBERS } from "./fixtures";
 import { newWorkItem } from "./work";
-import { effectiveTimelineMode, workDaySummary, workTimeline } from "./work-timeline";
+import { calendarHistory, effectiveTimelineMode, workDaySummary, workTimeline } from "./work-timeline";
 import { localDateTime } from "./time";
 import type { WorkSession } from "./types";
 
@@ -65,5 +65,31 @@ describe("display timelines without scheduling authority", () => {
     expect(workTimeline({ ...item, status: "completed" }, [], zone)?.end).toBe("2026-09-11");
     expect(workTimeline({ ...item, completedAt: null, status: "cancelled", updatedAt: "2026-09-12T16:00:00Z" }, [], zone)?.end).toBe("2026-09-12");
     expect(workTimeline({ ...item, completedAt: null }, [], zone)?.end).toBeNull();
+  });
+  it("uses recorded work dates for closed projects, excluding old windows and future bookings", () => {
+    const item = { ...task(), status: "completed" as const, timelineMode: "span" as const, windowEnd: null, completedAt: "2026-10-20T16:00:00Z" };
+    const done: WorkSession[] = ["2026-09-09", "2026-09-11"].map(date => ({ ...session(date), status: "completed" }));
+    const sessions = [...done, session("2026-12-31"), { ...session("2026-09-18"), status: "cancelled" as const }];
+    const before = JSON.stringify({ item, sessions });
+    expect(workTimeline(item, sessions, zone)).toEqual({ mode: "bookings", start: "2026-09-09", end: "2026-09-11" });
+    expect(calendarHistory([item], sessions, zone)).toEqual({ items: [item], sessions: done, completions: [] });
+    expect(JSON.stringify({ item, sessions })).toBe(before);
+  });
+  it("shows a dated marker without inventing hours when completion has no recorded sessions", () => {
+    const item = { ...task(), status: "completed" as const, completedAt: "2026-10-21T01:00:00Z" };
+    const sessions = [session("2026-10-22")];
+    expect(calendarHistory([item], sessions, zone)).toEqual({ items: [item], sessions: [], completions: [{ item, date: "2026-10-20" }] });
+    expect(workTimeline(item, sessions, zone)).toEqual({ mode: "bookings", start: "2026-10-20", end: "2026-10-20" });
+    const legacy = { ...item, completedAt: null, updatedAt: "2026-10-19T01:00:00Z" };
+    expect(calendarHistory([legacy], [], zone).completions[0].date).toBe("2026-10-18");
+  });
+  it("respects project filters and cancellations, and restores planned bookings when reopened", () => {
+    const item = { ...task(), status: "completed" as const };
+    const done: WorkSession = { ...session("2026-09-09"), status: "completed" };
+    const planned = session("2026-09-10");
+    for (const items of [[], [{ ...item, status: "cancelled" as const }]]) {
+      expect(calendarHistory(items, [done, planned], zone)).toEqual({ items: [], sessions: [], completions: [] });
+    }
+    expect(calendarHistory([{ ...item, status: "planned" }], [done, planned], zone).sessions).toEqual([done, planned]);
   });
 });

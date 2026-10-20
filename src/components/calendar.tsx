@@ -7,7 +7,7 @@ import type { AssistantDateSelection } from "@/lib/assistant-date-selection";
 import { addDays, dayOfWeek, instantFromMs, instantMs, localDate, localDateTime, minutesBetween } from "@/lib/time";
 import { dayCapacity } from "@/lib/scheduler";
 import { formatHours } from "@/lib/work";
-import { workDaySummary, workTimeline } from "@/lib/work-timeline";
+import { calendarHistory, workDaySummary, workTimeline } from "@/lib/work-timeline";
 import { dateLabel, Empty, timeLabel } from "./ui";
 import { calendarBookingMoveSourceUnavailableReason, type CalendarBookingMoveSelection } from "@/lib/calendar-booking-move";
 import { useCalendarBookingDrag } from "./use-calendar-booking-drag";
@@ -59,6 +59,7 @@ export function MonthCalendar({
   const canMove = Boolean(onMoveBookings && state.actor.role === "owner" && !selectingDates && !movingBookings);
   const move = useCalendarBookingDrag(state, canMove, onMoveBookings);
   const movePicker = useRef<HTMLElement | null>(null);
+  const history = useMemo(() => calendarHistory(items, state.sessions, state.settings.timeZone), [items, state.sessions, state.settings.timeZone]);
   useEffect(() => {
     // Keep keyboard/touch destination controls discoverable even when a handle
     // was selected in a lower week; never shift focus during a native drag.
@@ -107,17 +108,19 @@ export function MonthCalendar({
       </div>
       {weeks.map((days, week) => {
         const visibleDates = (item: WorkItem) => {
-          const timeline = workTimeline(item, state.sessions, state.settings.timeZone);
-          const sessionDays = state.sessions
+          const timeline = workTimeline(item, history.sessions, state.settings.timeZone);
+          const sessionDays = history.sessions
             .filter((s) => s.workItemId === item.id && s.status !== "cancelled")
             .map((s) => localDate(s.start, state.settings.timeZone));
           return days.filter(
             (d) =>
-              (timeline && d >= timeline.start && (!timeline.end || d <= timeline.end)) ||
+              (item.status === "completed"
+                ? history.completions.some(marker => marker.item.id === item.id && marker.date === d)
+                : timeline && d >= timeline.start && (!timeline.end || d <= timeline.end)) ||
               sessionDays.includes(d),
           );
         };
-        const ribbons = items.filter((item) => visibleDates(item).length > 0);
+        const ribbons = history.items.filter((item) => visibleDates(item).length > 0);
         const lanes: { end: number; count: number }[] = [];
         const fixedSpans = state.blocks
           .map((block) => ({
@@ -139,19 +142,23 @@ export function MonthCalendar({
         const spans = ribbons
           .sort(
             (a, b) =>
-              (workTimeline(a, state.sessions, state.settings.timeZone)?.start ?? a.windowStart).localeCompare(workTimeline(b, state.sessions, state.settings.timeZone)?.start ?? b.windowStart) ||
+              (workTimeline(a, history.sessions, state.settings.timeZone)?.start ?? a.windowStart).localeCompare(workTimeline(b, history.sessions, state.settings.timeZone)?.start ?? b.windowStart) ||
               a.createdAt.localeCompare(b.createdAt),
           )
-          .map((item) => {
+          .flatMap((item) => {
             const visible = visibleDates(item);
-            const from = days.indexOf(visible[0]);
-            const to = days.indexOf(visible[visible.length - 1]);
-            let lane = lanes.findIndex((l) => l.end < from);
-            if (lane < 0) {
-              lane = lanes.length;
-              lanes.push({ end: to, count: 1 });
-            } else lanes[lane] = { end: to, count: lanes[lane].count + 1 };
-            return { item, from, to, lane };
+            // Closed projects occupy only their recorded dates, never a faded
+            // span across unworked days or an old future project window.
+            return (item.status === "completed" ? visible.map(day => [day]) : [visible]).map(visible => {
+              const from = days.indexOf(visible[0]);
+              const to = days.indexOf(visible[visible.length - 1]);
+              let lane = lanes.findIndex((l) => l.end < from);
+              if (lane < 0) {
+                lane = lanes.length;
+                lanes.push({ end: to, count: 1 });
+              } else lanes[lane] = { end: to, count: lanes[lane].count + 1 };
+              return { item, from, to, lane };
+            });
           });
         return (
           <div
@@ -259,17 +266,18 @@ export function MonthCalendar({
                   (c) => c.id === item.clientId,
                 );
                 const label = `${client?.name} · ${item.title}`;
+                const completionDate = history.completions.find(marker => marker.item.id === item.id)?.date;
                 const segments = days.slice(from, to + 1).map(d => {
-                  const { plannedSessions: sessions, plannedMinutes: minutes, completedMinutes } = workDaySummary(item.id, state.sessions, d, state.settings.timeZone);
+                  const { plannedSessions: sessions, plannedMinutes: minutes, completedMinutes } = workDaySummary(item.id, history.sessions, d, state.settings.timeZone);
                   const sessionIds = sessions.map(s => s.id);
                   const reason = minutes ? calendarBookingMoveSourceUnavailableReason(state, sessionIds, new Date().toISOString()) : null;
                   return { d, sessions, sessionIds, minutes, completedMinutes, reason, draggable: canMove && minutes > 0 && !reason };
                 });
                 const mixedDay = segments.some(segment => segment.minutes > 0 && segment.completedMinutes > 0);
-                const hasCompleted = segments.some(segment => segment.completedMinutes > 0);
+                const hasCompleted = item.status === "completed" || segments.some(segment => segment.completedMinutes > 0);
                 const onlyCompleted = hasCompleted && !segments.some(segment => segment.minutes > 0);
                 return (
-                  <div key={item.id} className={`project-ribbon-lane category-${item.category} ${hasCompleted ? "completed-ribbon-lane" : ""} ${mixedDay ? "completed-mixed-lane" : ""} ${onlyCompleted ? "completed-ribbon-muted" : ""}`} data-work-item-id={item.id} style={{ gridColumn: `${from + 1} / ${to + 2}`, gridRow: lane + 1 }}>
+                  <div key={`${item.id}-${from}`} className={`project-ribbon-lane category-${item.category} ${hasCompleted ? "completed-ribbon-lane" : ""} ${mixedDay ? "completed-mixed-lane" : ""} ${onlyCompleted ? "completed-ribbon-muted" : ""}`} data-work-item-id={item.id} style={{ gridColumn: `${from + 1} / ${to + 2}`, gridRow: lane + 1 }}>
                   <button
                     disabled={selectingDates || !!move.source && !move.isDragging}
                     title={label}
@@ -294,7 +302,7 @@ export function MonthCalendar({
                             className={
                               minutes
                                 ? `ribbon-reserved ${draggable ? "booking-draggable" : ""} ${completedMinutes ? "completed-day-mixed" : ""}`
-                                : completedMinutes
+                                : completedMinutes || completionDate === d
                                   ? "completed-day-base"
                                   : (() => { const timeline = workTimeline(item, state.sessions, state.settings.timeZone); return timeline && d >= timeline.start && (!timeline.end || d <= timeline.end); })()
                                   ? "ribbon-span"
@@ -313,6 +321,10 @@ export function MonthCalendar({
                               title={`${formatHours(completedMinutes)} done on ${dateLabel(d)}`} draggable={false}
                               onDragStart={event => { event.preventDefault(); event.stopPropagation(); }}>
                               <Check size={10} aria-hidden="true" />{formatHours(completedMinutes)} done
+                            </span>}
+                            {completionDate === d && <span className="completed-day-segment" data-project-completion-id={item.id} data-completed-date={d}
+                              title={`Project completed on ${dateLabel(d)} · No hours recorded`} draggable={false}>
+                              <Check size={10} aria-hidden="true" />Completed
                             </span>}
                           </span>
                         );
@@ -359,15 +371,13 @@ export function MonthCalendar({
 }
 export function Agenda({ state, date, items, onSelect, onSelectBlock }: Props) {
   const now = useCalendarClock();
-  const sessions = state.sessions
-    .filter(
-      (s) =>
-        s.status !== "cancelled" &&
-        localDate(s.start, state.settings.timeZone) >= date &&
-        items.some((i) => i.id === s.workItemId),
-    )
+  const history = calendarHistory(items, state.sessions, state.settings.timeZone);
+  const completions = history.completions.filter(marker => marker.date >= date)
+    .map(marker => ({ ...marker, kind: "completion" as const, start: localDateTime(marker.date, "00:00", state.settings.timeZone) }));
+  const sessions = history.sessions
+    .filter(s => localDate(s.start, state.settings.timeZone) >= date)
     .map((session) => ({ kind: "session" as const, session, start: session.start, end: session.end, date: localDate(session.start, state.settings.timeZone) }));
-  const sessionDates = new Set(sessions.map(session => session.date));
+  const sessionDates = new Set([...sessions, ...completions].map(entry => entry.date));
   const blocks = state.blocks.flatMap((block) => {
     const first = localDate(block.start, state.settings.timeZone);
     const last = lastBlockDate(block, state.settings.timeZone);
@@ -384,7 +394,7 @@ export function Agenda({ state, date, items, onSelect, onSelectBlock }: Props) {
       return { kind: "block" as const, block, start, end, date: d, continuesThrough };
     });
   });
-  const upcoming = [...sessions, ...blocks].sort((a, b) => instantMs(a.start) - instantMs(b.start));
+  const upcoming = [...sessions, ...blocks, ...completions].sort((a, b) => instantMs(a.start) - instantMs(b.start));
   const days = [
     ...new Set(
       upcoming.map((entry) => entry.date),
@@ -410,6 +420,17 @@ export function Agenda({ state, date, items, onSelect, onSelectBlock }: Props) {
           {upcoming
             .filter((entry) => entry.date === d)
             .map((entry) => {
+              if (entry.kind === "completion") {
+                return (
+                  <button type="button" className="agenda-item completed-agenda-session" key={`completion-${entry.item.id}`}
+                    data-project-completion-id={entry.item.id} data-completed-date={d} onClick={() => onSelect(entry.item.id)}>
+                    <span className="agenda-time">Completed<small>No hours recorded</small></span>
+                    <span className={`category-dot category-${entry.item.category}`} />
+                    <span><strong>{entry.item.title}</strong><small>{state.clients.find(client => client.id === entry.item.clientId)?.name}</small></span>
+                    <span className="agenda-end"><Check size={14} aria-hidden="true" /><ArrowUpRight size={16} aria-hidden="true" /></span>
+                  </button>
+                );
+              }
               if (entry.kind === "block") {
                 const { block, start, end } = entry;
                 return (

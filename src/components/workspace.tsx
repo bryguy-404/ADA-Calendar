@@ -373,7 +373,7 @@ export function Workspace({ initialState }: { initialState: AppState }) {
     [state.items, state.clients, categories, client, search],
   );
   const calendarItems = filtered.filter(
-    (i) => i.status !== "completed" && i.status !== "cancelled",
+    (i) => i.status !== "cancelled",
   );
   const selected = state.items.find((i) => i.id === selectedId);
   const currentSessions = state.sessions
@@ -939,6 +939,7 @@ export function Workspace({ initialState }: { initialState: AppState }) {
                     Protected focus
                   </span>
                   <span><CalendarClock size={12} />Meetings &amp; time off · fixed time</span>
+                  <span>✓ Finished work · history retained</span>
                   <button className="text-button" onClick={() => setHelp(true)}>
                     Reading this calendar <CircleHelp size={12} />
                   </button>
