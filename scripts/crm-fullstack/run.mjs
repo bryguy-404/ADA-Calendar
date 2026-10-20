@@ -12,6 +12,7 @@ import {DEFAULT_SETTINGS,DEFAULT_PRIORITIES} from '../../src/lib/defaults.ts';
 import {localDate,addDays,nextWorkDate} from '../../src/lib/time.ts';
 import {prepareCrmStack,readStatus,stackDirectory,container} from './stack.mjs';
 import {exerciseFlows} from './flows.mjs';
+import {exerciseTaskFlow} from './task-flow.mjs';
 
 const calendarDir=fileURLToPath(new URL('../../',import.meta.url));
 const crmDir=path.resolve(process.argv[2]||path.join(calendarDir,'../ada-crm-calendar-integration'));
@@ -43,16 +44,13 @@ async function available(url,child) {
   throw new Error('Local application did not become ready.');
 }
 async function browserBaseline(url,name) {
-  const binary=process.env.ADA_AGENT_BROWSER_BIN||'agent-browser';
-  const session='ada-fullstack-baseline';
-  const run=args=>execFileSync(binary,['--session',session,...args],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
-  try{
-    run(['--executable-path','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome','open',url]);
-    const snapshot=run(['snapshot','-i']);assert.match(snapshot,/button|textbox/);
-    run(['screenshot',path.join(outputDir,name+'-baseline.png')]);
-    const errors=run(['errors']);assert.equal(errors.trim(),'','Initial app browser errors');
+  const baseline=await chromium.launch({channel:'chrome'});
+  try {
+    const page=await baseline.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+    await page.goto(url);await expect(page.locator('button').first()).toBeVisible();
+    await page.screenshot({path:path.join(outputDir,name+'-baseline.png')});assert.deepEqual(errors,[]);
     console.log('PASS: '+name+' real app loads with controls and no browser errors.');
-  }finally{run(['close']);}
+  } finally {await baseline.close();}
 }
 async function jsonResponse(response,label) {
   const body=await response.json();
@@ -118,7 +116,7 @@ async function main() {
     await crmContext.route('**/*',async route=>{
       const url=new URL(route.request().url());
       const target=url.origin===crmOrigin?'http://127.0.0.1:3194':url.origin===authOrigin?crmConfig.API_URL:null;
-      if(target){const response=await route.fetch({url:target+url.pathname+url.search});return route.fulfill({response});}
+      if(target){try {const response=await route.fetch({url:target+url.pathname+url.search});return await route.fulfill({response});} catch {return route.abort('connectionrefused').catch(()=>{});}}
       if(url.hostname==='cdn.jsdelivr.net')return route.fulfill({contentType:'application/javascript',body:readFileSync(path.join(calendarDir,'node_modules/@supabase/supabase-js/dist/umd/supabase.js'))});
       if(['fonts.googleapis.com','fonts.gstatic.com'].includes(url.hostname))return route.fulfill({body:'',contentType:'text/css'});
       return route.abort('blockedbyclient');
@@ -136,7 +134,7 @@ async function main() {
     await expect(page.locator('[data-id="fullstack-client"]').getByRole('button',{name:'Toggle tasks'})).toBeVisible();
     const day=nextWorkDate(addDays(localDate(new Date().toISOString(),DEFAULT_SETTINGS.timeZone),2),DEFAULT_SETTINGS);
     const fault=value=>writeFileSync(faultFile,JSON.stringify(value),{mode:0o600});
-    await exerciseFlows({cal,crm,requester,requesterId,otherId,otherSession,session,workspaceId,connectionId,owner,gateway,submit,sync,restartCrm,page,ownerContext,ownerOrigin,crmOrigin,day,outputDir,checked,sql,container,expect,calendarProcess,fault});
+    await (process.argv.includes('--legacy-booking') ? exerciseFlows : exerciseTaskFlow)({cal,crm,requester,requesterId,otherId,otherSession,session,workspaceId,connectionId,owner,gateway,submit,sync,restartCrm,page,ownerContext,ownerOrigin,crmOrigin,day,outputDir,checked,sql,container,expect,calendarProcess,fault});
     console.log('PASS: both actual local applications completed the integration suite. No real mail or hosted traffic.');
   } finally {
     writeFileSync(faultFile,'{}',{mode:0o600});
@@ -147,7 +145,7 @@ async function main() {
     writeFileSync(typeFile,generatedTypes);
     // Only generated Calendar fixture IDs; CRM's database is independently disposable.
     const statements=['begin;'];
-    if(connectionId){assert.match(connectionId,/^[a-f0-9-]{36}$/);for(const table of ['crm_cancellations','crm_changes','crm_operations','crm_closed_operations','crm_previews','crm_task_links','crm_client_mappings','crm_api_budgets','crm_integrations'])statements.push(`delete from public.${table} where ${table==='crm_integrations'?'id':'integration_id'}='${connectionId}';`);}
+    if(connectionId){assert.match(connectionId,/^[a-f0-9-]{36}$/);for(const table of ['crm_intakes','crm_cancellations','crm_changes','crm_operations','crm_closed_operations','crm_previews','crm_task_links','crm_client_mappings','crm_api_budgets','crm_integrations'])statements.push(`delete from public.${table} where ${table==='crm_integrations'?'id':'integration_id'}='${connectionId}';`);}
     statements.push(`delete from pgmq.q_ada_notifications where message->>'notificationId' in (select id from public.notifications where workspace_id='${workspaceId}');`);
     for(const table of ['notifications','pending_requests','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${workspaceId}';`);
     statements.push('commit;');sql('supabase_db_ada-calendar',statements.join('\n'));

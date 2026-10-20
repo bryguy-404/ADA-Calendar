@@ -1,5 +1,20 @@
 # ADA Calendar / CRM release checklist
 
+## October 20, 2026: unscheduled CRM assignment intake
+
+Bryan approved Kyle's October 15 task-flow requirements and requested implementation and release to both repositories' main branches. This supersedes the earlier requirement to book/review every new CRM assignment, the suppression of CRM assignment mail for these new intake tasks, and delayed hiding of completed CRM work.
+
+`POST /api/integrations/crm/v1/intake` accepts only a durable task identity, existing CRM company ID, title/description, optional due date and source actor verified by the CRM backend when saving. The existing service credential authorizes delivery by the CRM worker; it cannot submit commands, scheduling fields or owner overrides. `crm_intakes` keeps the immutable input and replay result. Existing owner-confirmed client mappings are required. No company records are created or overwritten.
+
+The shared scheduler creates waiting work with unknown effort and zero sessions. A narrowly constrained SQL wrapper checks the complete proposal, preserving every existing item, session, block, client and saved setting before calling the shared transaction. This internal delegation does not create owner membership or grant CRM scheduling authority. The work uses the existing Web/Edit default category until Bryan chooses its details. Bryan uses the normal owner controls to estimate, categorize and schedule it. Completing a session/day remains distinct from completing the whole task.
+
+CRM owns the single assignment notification for intake; initial delivery emits no Calendar email. Subsequent owner changes retain the existing change feed and recipient preferences. CRM removal is its own retained marker and does not cancel Calendar work. Calendar cancellation remains separately reviewed and authorized, including protected-time restrictions.
+
+Deploy this additive migration/API before CRM's `deploy/task-flow.sql` and application release. Calendar migrations continue through the existing GitHub/Supabase integration, not a second production migration path. Keep saved interruption reserve and requester opt-outs unchanged. No historical-task backfill, company cleanup, test email or credential change is part of this release.
+
+Checks: `npm run check`; `npm run test:crm-intake-db`; CRM build/unit/browser/SQL checks; `npm run test:crm-fullstack -- /path/to/ada-crm` for real local Auth/SQL and both apps. All fixture mail remains queued with workers disabled. The retained scheduled API scenarios use `--legacy-booking`.
+
+
 Release procedure and verification record for the paired integration branches. Both applications, integration schemas and all 36 current CRM client matches are installed. Calendar has 47 clients after the 17 approved additions. Calendar booking, CRM assignment checks and synchronization are active. The approved live pilot passed booking, conflict/alternative previews and owner cancellation with synchronization back to CRM. The test booking is cancelled and consumes no time. Bryan authorized normal team email delivery on September 15; the Calendar notification worker is now verified in live mode.
 
 ## Willian’s Calendar emails paused — October 15, 2026

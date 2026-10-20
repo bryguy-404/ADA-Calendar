@@ -36,10 +36,10 @@ minimum_password_length = 12
 enable_signup = true
 enable_confirmations = true
 `);
-  const files=['supabase-schema.sql','task-notifications.sql','task-identity.sql','task-assigner.sql','resources.sql','internal-companies.sql','calendar-integration.sql','my-day-emails.sql','calendar-sync.sql','calendar-cancellation.sql'];
+  const files=['supabase-schema.sql','task-notifications.sql','task-identity.sql','task-assigner.sql','resources.sql','internal-companies.sql','calendar-integration.sql','my-day-emails.sql','calendar-sync.sql','calendar-cancellation.sql','task-flow.sql','client-websites.sql','links.sql'];
   // This directory contains only this disposable harness's generated migration copies.
-  for(const file of readdirSync(path.join(directory,'migrations')))if(/^20260915000\d_.*\.sql$/.test(file))unlinkSync(path.join(directory,'migrations',file));
-  files.forEach((file,index)=>writeFileSync(path.join(directory,'migrations',`20260915000${index}_${file}`),readFileSync(path.join(crmDir,'deploy',file))));
+  for(const file of readdirSync(path.join(directory,'migrations')))if(/^20260915\d+_.*\.sql$/.test(file))unlinkSync(path.join(directory,'migrations',file));
+  files.forEach((file,index)=>writeFileSync(path.join(directory,'migrations',`20260915${String(index).padStart(6,'0')}_${file}`),readFileSync(path.join(crmDir,'deploy',file))));
   const cli=path.join(calendarDir,'node_modules/.bin/supabase');
   // Capture CLI output privately: status/start output may contain local keys.
   async function run(args) {

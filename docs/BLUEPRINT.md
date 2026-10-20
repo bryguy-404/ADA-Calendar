@@ -10,6 +10,9 @@ Bryan wears four hats: Web (edits/builds), IT, Landings, and Software. Kyle, Wil
 
 ## Locked product decisions
 
+**October 20 CRM task flow:** Ordinary CRM assignments to Bryan save without scheduling details and sync as waiting work with unknown effort and no reserved time. Bryan schedules them through the existing owner controls. CRM owns the assignment email; Calendar owns subsequent schedule/completion status. CRM removal retains history and is independent of explicit Calendar cancellation. Imports and sync cannot create companies. See the superseding October 20 section in `CRM_INTEGRATION.md`.
+
+
 **September 14 CRM integration:** Bryan approved connecting ADA CRM to Calendar, with Calendar's API implemented first and the CRM connected afterward, in reviewable phases. Calendar remains the schedule/approval authority. The integration decisions, implementation checkpoints, testing and rollout requirements are recorded in [CRM_INTEGRATION.md](CRM_INTEGRATION.md). The initial foundation stays disabled and grants no live booking capability.
 
 **CRM preview checkpoint:** Phase 2 is split into availability/previews (2a) and scheduling transactions (2b), each tested and committed locally. The shared scheduler may show an exact-time requester's proposed ordinary displacement only with `requiresApproval`; that preview grants no authority to commit it. Protected, started, unknown-total and partially booked conflicts retain explicit-owner handling. No live integration is enabled by these checkpoints.

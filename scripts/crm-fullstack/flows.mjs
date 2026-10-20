@@ -17,17 +17,10 @@ export async function exerciseFlows(h) {
     const review=await commandPreview(list);assert.equal(review.proposal.status,'ready');
     return owner('commands',{commands:list,operationId:review.operationId,action:'commit',baseVersion:review.proposal.baseVersion,reviewFingerprint:review.proposal.reviewFingerprint});
   }
-  // Create through the actual CRM UI. The request uses both actual Auth/REST services.
+  // Retained scheduled-booking API compatibility. Ordinary UI assignment is tested in task-flow.mjs.
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.locator('[data-id="fullstack-client"]').getByRole('button',{name:'Toggle tasks'}).click();
-  const form=page.locator('[data-add]');await form.getByLabel('Task',{exact:true}).fill('FICTIONAL full-stack browser booking');
-  await form.getByLabel('Owner',{exact:true}).selectOption('Bryan');await form.getByRole('button',{name:'Add Task'}).click();
-  const dialog=page.locator('[aria-labelledby=calendarTitle]');await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Estimated hours').fill('2');await dialog.getByLabel('Schedule',{exact:true}).selectOption('day');await dialog.locator('[name=date]').fill(day);
-  await dialog.getByRole('button',{name:'Check Calendar',exact:true}).click();
-  await expect(dialog.getByText('This task fits',{exact:true})).toBeVisible({timeout:20000});
-  await page.screenshot({path:path.join(outputDir,'crm-real-preview.png')});
-  await dialog.getByRole('button',{name:'Book task',exact:true}).click();await expect(dialog).not.toBeVisible({timeout:20000});
+  const initial=await preview(input('FICTIONAL full-stack browser booking',{mode:'day',date:day},120));
+  assert.equal((await finish(initial)).state,'completed');
   const rows=checked(await crm.from('tasks').select('*').eq('title','FICTIONAL full-stack browser booking'));assert.equal(rows.length,1);const first=rows[0];assert.equal(first.calendar.status,'planned');
   assert.ok((await state()).items.some(item=>item.id===first.calendar.workItemId));
   const ownerPage=await ownerContext.newPage();await ownerPage.goto(ownerOrigin);await expect(ownerPage.locator('body')).toContainText('FICTIONAL full-stack browser booking');
@@ -55,6 +48,7 @@ export async function exerciseFlows(h) {
   assert.equal((await task(removedId)).calendar.status,'unbooked','Replaying old acceptance must not recreate undone work');
   console.log('PASS: due dates, conflict alternatives, original-requester reply, owner approval and Undo remain authoritative.');
 
+  await page.locator('[data-id="fullstack-client"]').getByRole('button',{name:'Toggle tasks'}).click();
   // Schedule edits, completion and exact Undo reach both CRM data and its live subscription.
   await commands([{type:'update',itemId:first.calendar.workItemId,patch:{title:'FICTIONAL renamed in Calendar'}}]);await sync();
   assert.equal((await task(first.id)).title,'FICTIONAL renamed in Calendar');
@@ -132,17 +126,8 @@ export async function exerciseFlows(h) {
   await internalPanel.getByRole('button',{name:'Toggle tasks'}).click();
   await expect(internalPanel.getByRole('button',{name:'Copy Calendar client ID'})).toBeVisible();
   await expect(internalPanel.locator('[data-remove-client], [name=mrr]')).toHaveCount(0);
-  const internalForm=internalPanel.locator('[data-add]');
-  await internalForm.getByLabel('Task',{exact:true}).fill(internalInput.title);
-  await internalForm.getByLabel('Owner',{exact:true}).selectOption('Bryan');
-  await internalForm.getByRole('button',{name:'Add Task'}).click();
-  await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Estimated hours').fill('0.25');
-  await dialog.getByLabel('Schedule',{exact:true}).selectOption('day');
-  await dialog.locator('[name=date]').fill(nextWorkDate(addDays(blockedDay,1),DEFAULT_SETTINGS));
-  await dialog.getByRole('button',{name:'Check Calendar',exact:true}).click();
-  await expect(dialog.getByText('This task fits',{exact:true})).toBeVisible();
-  await dialog.getByRole('button',{name:'Book task',exact:true}).click();await expect(dialog).not.toBeVisible();
+  const internalPreview=await preview({...internalInput,estimatedMinutes:15,scheduling:{mode:'day',date:nextWorkDate(addDays(blockedDay,1),DEFAULT_SETTINGS)}});
+  assert.equal((await finish(internalPreview)).state,'completed');
   await sync();
   const internalRows=checked(await crm.from('tasks').select('*').eq('title',internalInput.title));assert.equal(internalRows.length,1);
   assert.equal(internalRows[0].client_id,internalId);assert.equal(internalRows[0].calendar.status,'planned');
@@ -160,6 +145,8 @@ export async function exerciseFlows(h) {
   await expect(internalPanel.locator('.task').filter({hasText:internalInput.title}).locator('[data-calendar-cancel]')).toBeVisible();
   await internalPanel.locator('.task').filter({hasText:internalInput.title}).locator('[data-calendar-cancel]').click();
   const cancellationDialog=page.locator('[aria-labelledby=calendarCancelTitle]');
+  await cancellationDialog.getByLabel('Cancel Calendar booking too').check();
+  await cancellationDialog.getByRole('button',{name:'Remove from CRM',exact:true}).click();
   await expect(cancellationDialog.getByLabel('Reason for cancelling')).toBeVisible();
   await expect(cancellationDialog.getByText('Work may already have started, or some work has been recorded. Cancelling stops only the remaining work.')).toBeVisible();
   await cancellationDialog.getByLabel('Reason for cancelling').fill('Client withdrew this request');
@@ -168,7 +155,7 @@ export async function exerciseFlows(h) {
   await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(outputDir,'crm-cancellation-mobile.png')});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await page.setViewportSize({width:1440,height:1000});
-  await cancellationDialog.getByRole('button',{name:'Remove task',exact:true}).click();
+  await cancellationDialog.getByRole('button',{name:'Confirm Calendar cancellation',exact:true}).click();
   await expect(cancellationDialog).not.toBeVisible({timeout:20000});await sync();
   const cancelled=await task(cancelTask.id);assert.equal(cancelled.calendar.status,'cancelled');assert.equal(cancelled.done,false);
   assert.equal(cancelled.calendar.cancellation.by,(await requester.auth.getUser()).data.user.email);
