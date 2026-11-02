@@ -56,6 +56,7 @@ async function setup(page: Page, width: number) {
   const refreshed = page.waitForResponse(`${origin}/api/state`);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await refreshed;
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByRole("button", { name: "month", exact: true }).click();
   return { before, actions, commands, current: () => fixture };
 }

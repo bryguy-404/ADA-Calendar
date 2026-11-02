@@ -64,6 +64,7 @@ async function setup(page: Page, width = 1440, requester = false) {
   const loaded = page.waitForResponse(response => response.url() === `${origin}/api/state`);
   await page.evaluate(() => window.dispatchEvent(new Event("focus"))); await loaded;
   await expect(page.getByText("Cedar Studio", { exact: true }).first()).toBeAttached();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   return { before, calls, fixture: () => fixture, staleOnNextConfirm: () => { staleOnce = true; } };
 }
 async function open(page: Page) {

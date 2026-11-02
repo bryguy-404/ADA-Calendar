@@ -54,6 +54,7 @@ for (const width of [1800, 1440, 1366, 1100, 520, 390]) {
     }
     await page.getByRole("button", { name: "month", exact: true }).click();
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.getByRole("button", { name: "Today", exact: true }).click();
     const calendar = page.getByLabel("Month workload calendar", { exact: true });
     const cases = [
       ["Tuesday, September 8", "6.5h", "0h"], ["Wednesday, September 9", "3.5h", "3h"],
@@ -142,6 +143,7 @@ test("turning off the reserve shows 7.5 available hours without changing existin
   await page.goto("/");
   await page.getByRole("button", { name: "month", exact: true }).click();
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   const calendar = page.getByLabel("Month workload calendar", { exact: true });
   await expect(calendar.getByRole("button", { name: "Tuesday, September 8, 6.5h available, 0h planned", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Workspace settings", exact: true }).click();

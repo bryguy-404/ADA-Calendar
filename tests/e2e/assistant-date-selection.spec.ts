@@ -24,6 +24,8 @@ async function prepare(page: Page, width = 1440, role: "bryan" | "kyle" | "viewe
   await expect(page.getByRole("button", { name: "month", exact: true })).toHaveClass(/active/);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByTitle("Cedar Studio", { exact: true })).toHaveCount(1);
+  // The initial selected month comes from SSR, not the frozen browser clock.
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   return { fixture, stored };
 }
 const day = (page: Page, name: string) => page.getByLabel("Month workload calendar", { exact: true }).getByRole("button", { name: new RegExp(`^${name},`), includeHidden: true });

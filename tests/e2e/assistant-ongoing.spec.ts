@@ -69,6 +69,7 @@ test("offline ongoing-project conversation corrects the date, clarifies lunch, a
   expect(fixture.items).toHaveLength(1);
   expect(fixture.sessions).toHaveLength(2);
   await dialog.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   const calendar = page.getByLabel("Month workload calendar", { exact: true });
   await calendar.getByTitle(`Cedar Studio · ${title}`, { exact: true }).first().click();
   await expect(dialog.getByText("Hours added as needed", { exact: true }).first()).toBeVisible();

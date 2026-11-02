@@ -66,6 +66,7 @@ test("offline waiting-project clarification preserves a separate project and two
   await expect(dialog.getByText("Saved the separate waiting project. No hours booked.", { exact: true })).toBeVisible();
   expect(assistantRequests).toBe(2);
   await dialog.getByRole("button", { name: "Close dialog", exact: true }).click();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   const calendar = page.getByLabel("Month workload calendar", { exact: true });
   // The six-week grid includes the beginning of the following month.
   await expect(calendar.getByTitle(`${client.name} · ${title}`, { exact: true })).toHaveCount(5);

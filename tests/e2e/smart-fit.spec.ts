@@ -52,6 +52,7 @@ async function setup(page: Page, width: number, withFridayBooking = false) {
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await loaded;
   await expect(page.getByText("Cedar Studio", { exact: true }).first()).toBeAttached();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   return { before, actions, fixture: () => fixture };
 }
 

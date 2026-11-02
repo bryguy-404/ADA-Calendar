@@ -42,6 +42,7 @@ for (const width of [1440, 390]) test(`redistributes three bookings into five da
   await page.getByRole("button", { name: "month", exact: true }).click();
   await expect(page.getByRole("button", { name: "month", exact: true })).toHaveClass(/active/);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByTitle("Cedar Studio · Cedar website", { exact: true }).first().focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: item.title, exact: true });
@@ -126,6 +127,7 @@ async function openSessionFixture(page: Page, width: number, dailyPlan = true, p
   await page.getByRole("button", { name: "month", exact: true }).click();
   await expect(page.getByRole("button", { name: "month", exact: true })).toHaveClass(/active/);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByTitle("Cedar Studio · Cedar daily website build", { exact: true }).first().click();
   const dialog = page.getByRole("dialog", { name: item.title, exact: true });
   return { dialog, dates, original, actions, current: () => fixture, stored };

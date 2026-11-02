@@ -75,6 +75,8 @@ async function setup(page: Page, width = 1440, actor: "bryan" | "kyle" = "bryan"
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await refreshed;
   await expect(page.getByTitle("Cedar Studio", { exact: true })).toBeVisible();
+  // SSR seeds the real server date; select the browser fixture's frozen day.
+  await page.getByRole("button", { name: "Today", exact: true }).click();
   await page.getByRole("button", { name: "month", exact: true }).click();
   return { before, requests, fixture: () => fixture };
 }
