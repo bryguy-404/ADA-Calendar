@@ -1,6 +1,7 @@
 node_modules
 .next
 .next-e2e
+.next-mcp-test
 .next-password-check
 .data-e2e
 coverage

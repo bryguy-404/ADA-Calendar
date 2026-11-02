@@ -3,6 +3,7 @@ node_modules/
 .next-e2e/
 .next-crm-integration/
 .next-save-performance/
+.next-mcp-test/
 .next-password-check/
 .data-e2e/
 out/

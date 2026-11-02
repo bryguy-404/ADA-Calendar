@@ -1,5 +1,9 @@
 # ADA Calendar — approved version one
 
+## November 2: read-only daily website coordination
+
+Bryan approved a focused first version of optional website/project context and a read-only MCP adapter, then authorized publishing the context fields through the existing repository/Railway workflow on November 2. Reuse existing tasks, references, private files, invite-only authorization and shared scheduler saves. The coordinator stays outside Calendar. Three tools read a selected Indianapolis date, a stable-ID work bundle and associated authorized material. Source/freshness and reported versus independently verified progress remain explicit. Software and explicitly manual items stay manual; IT tasks remain visible for classification because indexing/domain work can be IT. No automatic execution permission, bookings, mailbox ingestion, new hosted services, live sends or orchestration are added. Finish-day and project completion/CRM/history semantics stay unchanged. Connection and authorization boundaries are in [MCP_COORDINATION.md](MCP_COORDINATION.md). The native MCP connection is registered and active; preserve its implementation checkout path and existing private session during release. Do not backfill live tasks or book additional work for this release.
+
 ## Purpose
 
 Bryan wears four hats: Web (edits/builds), IT, Landings, and Software. Kyle, William, and clients independently assign work. This application makes the full workload visible while keeping work inside Monday–Friday, 9–5. All agreed V1 functionality ships together, implemented and tested in reviewable increments. Gmail/Slack reading, public links, and client-scoped portals are deferred.

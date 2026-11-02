@@ -1,4 +1,5 @@
 "use client";
+import { WorkContextDetails } from "./work-context";
 import { workTimeline } from "@/lib/work-timeline";
 import { useEffect, useState } from "react";
 import {
@@ -666,6 +667,7 @@ export function WorkDetails({
           )}
         </section>
       )}
+      {item.workContext && <WorkContextDetails context={item.workContext} />}
       <section className="detail-section">
         <h3>
           <Paperclip size={16} />

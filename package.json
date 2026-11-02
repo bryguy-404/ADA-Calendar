@@ -6,6 +6,9 @@
     "node": ">=22.22.0"
   },
   "scripts": {
+    "mcp": "tsx scripts/mcp.ts",
+    "mcp:login": "tsx scripts/mcp-login.ts",
+    "test:mcp-fullstack": "node --conditions=react-server --import tsx scripts/mcp-fullstack-test.mjs",
     "dev": "next dev --hostname 127.0.0.1",
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
@@ -43,6 +46,8 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/server": "2.4.0",
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "26.4.1",

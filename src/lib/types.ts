@@ -10,6 +10,12 @@ export interface WorkspaceSettings {
   weeklyDay: number; weeklyTime: string; aiWarningUsd: number; aiLimitUsd: number;
 }
 export interface ChecklistItem { id: string; title: string; done: boolean }
+export interface WebsiteWorkContext {
+  websiteUrl: string; projectUrl: string; requestedResult: string;
+  requirementsStatus: "tentative" | "confirmed"; progressNote: string;
+  materialsStatus: "not_checked" | "ready" | "missing" | "inaccessible";
+  materialsNote: string; manualOnly: boolean;
+}
 export interface WorkItem {
   id: string; clientId: string; title: string; description: string; category: Category;
   webKind: "edit" | "build" | null; requesterId: string | null; requestedBy: string;
@@ -25,6 +31,7 @@ export interface WorkItem {
   dailyPlan?: { date: string; minutes: number }[];
   progressTotal: number | null; progressCompleted: number; updateDate: string | null;
   references: string[]; createdAt: string; updatedAt: string;
+  workContext?: WebsiteWorkContext;
 }
 export interface WorkSession {
   id: string; workItemId: string; start: string; end: string; protected: boolean;

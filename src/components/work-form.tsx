@@ -1,4 +1,5 @@
 "use client";
+import { WorkContextFields } from "./work-context";
 import { useState } from "react";
 import { ArrowRight, Clock3, LockKeyhole, TriangleAlert } from "lucide-react";
 import type {
@@ -337,6 +338,7 @@ export function WorkForm({
         progressTotal: item.progressTotal,
         updateDate: item.updateDate,
         references: item.references,
+        ...(item.workContext ? { workContext: item.workContext } : {}),
         ...(constraintsChanged ? { dateConstraints: constraints } : {}),
         ...(hoursMode === "ongoing"
           ? {
@@ -870,6 +872,7 @@ export function WorkForm({
               </Field>
             </div>
           )}
+          <WorkContextFields value={item.workContext} onChange={workContext => patch({ workContext })} />
           <Field label="Links or email references (one per line)">
             <textarea
               rows={2}

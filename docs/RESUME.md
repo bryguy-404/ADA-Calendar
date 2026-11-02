@@ -1,8 +1,19 @@
 # ADA Calendar — current handoff
 
-## September 7, 2026 — password sign-in implementation
+## November 2, 2026 — website-work context release
 
-This is the current checkpoint; older sections below are historical. Bryan asked for **password sign-in before continuing Resend setup**, then explicitly authorized committing and pushing this implementation to `main`. Verify this checkpoint's GitHub and Railway deployment before treating the password change as live. Preserve the pre-existing generated `next-env.d.ts` development reference change outside this commit.
+Bryan authorized publishing the implemented website-work fields through the existing GitHub/main and Railway workflow. This checkpoint supersedes the historical setup sections below. The current repository is `bryguy-404/ADA-Calendar`; the production origin is `https://ada-calendar-production.up.railway.app`.
+
+- Release checkout: `/Users/bryanarambula/.codex/worktrees/calendar-readonly-mcp/ada-calendar`, branch `codex/calendar-readonly-mcp`, based on current remote main `e8acb86`. Keep this checkout in place: the active native read-only MCP connection points at it. The original project checkout remains on its unrelated branch, with its existing `docs/RESUME.md` and `next-env.d.ts` edits preserved.
+- Fields are under **open a work item → Edit details → Advanced → Website work context (optional)**; also available when adding work. They capture website/project URLs, requested result, requirements confidence, reported progress, material gaps and manual coordination. Saved context appears in work details above Files & references. Existing links/uploads remain the source-material mechanism.
+- No migration, new hosted service, task backfill, schedule rewrite or send is part of this release. Existing scheduler authorization, reserve/hours, completed history and CRM behavior remain unchanged. IT tasks remain visible for classification; software and explicitly manual items stay manual.
+- Native MCP is already registered/signed in, with a fresh production agenda read at schedule version 448 before release. Do not repeat sign-in, expose its private session or change connection paths. The future installation/recovery recipe is in [MCP_COORDINATION.md](MCP_COORDINATION.md).
+- The implementation passed 1,432 unit/server tests, lint, types, production build and local desktop/mobile/Auth/SQL/Storage/stdio checks. The release also passes the Node 24.22.2 Docker build and both network-isolated production-container smoke modes. Deployment success and final release identifiers will be recorded after Railway confirms them; a push alone is not proof of production deployment.
+- The coordinator will inspect the fields in the authenticated live browser after publication. Do not compete for that browser or save fictional content into live work for verification.
+
+## Historical September 7, 2026 — password sign-in implementation
+
+This historical checkpoint records Bryan's request for **password sign-in before continuing Resend setup**, followed by authorization to commit and push that implementation to `main`. The release instructions/status below describe that earlier checkpoint. Preserve unrelated generated `next-env.d.ts` development changes.
 
 ### Implemented and verified locally
 

@@ -2,6 +2,8 @@
 
 Bryan's shared workload calendar: protected focus, natural-language planning, capacity-aware requests, and a durable record of what changed.
 
+The optional local [read-only MCP connection](docs/MCP_COORDINATION.md) exposes a selected day's agenda, complete work-item context and authorized private materials for daily coordination. Its setup and deployment status are documented separately from the web app.
+
 ## Local development
 
 Use Node 24 (Node 22.22+ is compatible with the local tooling) and npm.
@@ -40,7 +42,7 @@ The container check starts and removes only its own temporary network-isolated t
 
 This project deploys to **Railway**, with a Node 24 multi-stage Docker image and Next.js standalone output. Railway supplies `PORT`; the application listens on `0.0.0.0`. `/api/health` is the healthcheck. The database, private uploads, authentication and durable notification worker remain on Supabase.
 
-Use **one real Supabase project named ADA Calendar and one Railway application**, per Bryan's September 7 decision. A separate hosted staging environment is not required. The public GitHub repository is `tito3288/ADA-Calendar`; application access and stored workload data remain private. Review Supabase's selected GitHub integration and automatic-deployment settings before further pushes.
+Use **one real Supabase project named ADA Calendar and one Railway application**, per Bryan's September 7 decision. A separate hosted staging environment is not required. The current public GitHub repository is `bryguy-404/ADA-Calendar`; application access and stored workload data remain private. Review Supabase's selected GitHub integration and automatic-deployment settings before schema releases. Current release evidence is recorded in [docs/RESUME.md](docs/RESUME.md).
 
 Set `ADA_DEMO_MODE=false` in production. Configure Supabase and a canonical HTTPS `APP_URL`. Verify the real integrations in this environment, keeping `EMAIL_MODE=capture` or explicitly allowlisted `test` delivery until sender verification, recipient configuration and workflow tests are complete and Bryan authorizes normal live notifications. Local automated tests remain isolated. API keys, backups and workload data never belong in Git. A backup/Storage restore rehearsal remains unverified and can use an isolated local destination rather than a second hosted project.
 

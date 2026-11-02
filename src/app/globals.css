@@ -3632,3 +3632,5 @@ small {
   .completion-review { padding: 12px; }
   .completion-review-actions > button { min-height: 44px; flex: 1 1 auto; }
 }
+/* Optional descriptive context must fit narrow work-detail panels. */
+.work-context dd, .work-context p { overflow-wrap: anywhere; white-space: pre-wrap; }

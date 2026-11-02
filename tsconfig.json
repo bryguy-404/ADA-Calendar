@@ -39,7 +39,9 @@
     ".next-crm-integration/types/**/*.ts",
     ".next-crm-integration/dev/types/**/*.ts",
     ".next-save-performance/types/**/*.ts",
-    ".next-save-performance/dev/types/**/*.ts"
+    ".next-save-performance/dev/types/**/*.ts",
+    ".next-mcp-test/types/**/*.ts",
+    ".next-mcp-test/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

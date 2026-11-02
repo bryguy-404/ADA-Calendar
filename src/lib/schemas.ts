@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { addDays, isDate, isInstant } from "./time";
+import { workContextSchema } from "./work-context";
 
 export const idSchema = z.string().min(1).max(150).regex(/^[\w-]+$/);
 export const reviewFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/, "Check a fresh schedule preview.");
@@ -26,6 +27,7 @@ export const workItemSchema = z.object({
   checklist: checklistSchema, progressTotal: z.number().int().positive().max(10_000).nullable(),
   progressCompleted: z.number().int().min(0).max(10_000), updateDate: nullableDate,
   references: z.array(z.string().max(2000)).max(20), createdAt: instantSchema, updatedAt: instantSchema,
+  workContext: workContextSchema.optional(),
 }).strict();
 export const sessionSchema = z.object({
   id: idSchema, workItemId: idSchema, start: instantSchema, end: instantSchema, protected: z.boolean(),
