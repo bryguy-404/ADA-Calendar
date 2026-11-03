@@ -2,7 +2,7 @@
 
 Bryan's shared workload calendar: protected focus, natural-language planning, capacity-aware requests, and a durable record of what changed.
 
-The optional local [read-only MCP connection](docs/MCP_COORDINATION.md) exposes a selected day's agenda, complete work-item context and authorized private materials for daily coordination. Its setup and deployment status are documented separately from the web app.
+The optional local [MCP connection](docs/MCP_COORDINATION.md) exposes a selected day's agenda, complete work-item context, authorized private materials and scoped owner-authorized context updates. Scheduling, effort and status changes remain separate. Its setup, deployment and native usability are documented separately from the web app.
 
 ## Local development
 

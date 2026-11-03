@@ -23,6 +23,7 @@ import { PreviewChangedError, withReviewFingerprint } from "@/lib/server/preview
 import type { Attachment, EmailDraft, Interpretation, WorkCommand } from "@/lib/types";
 import { noteSaveSchema } from "@/lib/notes";
 import { listNotes, saveNote, NoteAccessError, NoteConflictError } from "@/lib/server/notes";
+import { saveTaskContext, TaskContextError } from "@/lib/server/task-context";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       return NextResponse.json({ note: await saveNote(actor, input) }, { headers: { "Cache-Control": "private, no-store" } });
     }
     let state = await store.getState(actor.id);
+    if (route === "task-context") return NextResponse.json(await saveTaskContext(actor, await json(req), state), { headers: { "Cache-Control": "private, no-store" } });
     if (actor.role === "viewer") return failure(new Error("Viewers have read-only access."), 403);
     if (route === "commands") {
       const input = commandRequestSchema.parse(await json(req));
@@ -316,6 +318,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     }
     return failure(new Error("Not found."), 404);
   } catch (error) {
+    if (error instanceof TaskContextError) return NextResponse.json({ code: error.code, error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store" } });
     if (error instanceof NoteConflictError) return failure(error, 409);
     if (error instanceof NoteAccessError) return failure(error, 403);
     if (error instanceof PreviewChangedError) return NextResponse.json({ error: error.message, proposal: error.proposal }, { status: 409 });

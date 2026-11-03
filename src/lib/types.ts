@@ -12,7 +12,7 @@ export interface WorkspaceSettings {
 export interface ChecklistItem { id: string; title: string; done: boolean }
 export interface WebsiteWorkContext {
   websiteUrl: string; projectUrl: string; requestedResult: string;
-  requirementsStatus: "tentative" | "confirmed"; progressNote: string;
+  requirementsStatus: "tentative" | "confirmed"; requirementsNote?: string; progressNote: string;
   materialsStatus: "not_checked" | "ready" | "missing" | "inaccessible";
   materialsNote: string; manualOnly: boolean;
 }
@@ -39,6 +39,10 @@ export interface WorkSession {
   /** Owner-authorized focus minimum for this explicit booking, not the project. */
   focusOverrideMinutes?: number;
 }
+/** Descriptive changes only. Omitted values survive; explicit empty values clear. */
+export type TaskContextPatch = Partial<Pick<WorkItem, "title" | "description" | "references" | "blockedReason">> & {
+  workContext?: Partial<WebsiteWorkContext>;
+};
 export interface UnavailableBlock { id: string; title: string; start: string; end: string; kind: "meeting" | "time_off" }
 export interface ScheduleSnapshot {
   workspaceId: string; version: number; settings: WorkspaceSettings; clients: Client[];
@@ -56,6 +60,7 @@ export interface SmartFitRequest {
   distribution: "total" | "per_day"; resumeWaiting?: boolean;
 }
 export type WorkCommand =
+  | { type: "context_update"; itemId: string; patch: TaskContextPatch }
   | { type: "create"; item: WorkItem; sessions?: WorkSession[]; smartFit?: SmartFitRequest; bookingWindow?: BookingWindow; urgent?: boolean; overrideProtected?: boolean; overrideDeadline?: boolean }
   | { type: "fit"; itemId: string; request: SmartFitRequest }
   /** Existing sessions only, in their requested chronological order on one day. */

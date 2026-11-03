@@ -2,6 +2,13 @@
 
 This records evidence for the eight phases in [the approved blueprint](BLUEPRINT.md), not a claim that hosted services have been deployed. Sample clients, the demo parser, and captured notifications are deliberately isolated from live work.
 
+## Scoped MCP context writes and waiting reasons — November 3, 2026
+
+- `npm run check` passed ESLint, generated route types/TypeScript, all **1,461 unit/server tests in 80 files**, and the optimized production build. Tests cover scoped merges/explicit clears, waiting-only reasons, owner/workspace authorization, mixed-command rejection, stale/concurrent saves, persistent duplicate reconciliation and retry after uncertain responses.
+- The three new Playwright scenarios pass on desktop/mobile, including lost-response retry with the same operation and conflict recovery without discarding the draft. The real local Auth/API/PostgreSQL/stdio MCP suite also passes: all scheduling fields, session SQL rows and old audit history remain exact; malicious direct RPC changes fail; requester/viewer/other-workspace writes fail. Context changes reach a linked CRM feed while creating zero notifications, even with requester email updates enabled.
+- Local public-schema lint reports zero errors and no warnings in the new functions. Its two unused-variable warnings belong to the existing `reply_crm_request` and `cancel_crm_task` functions. The isolated MCP test fixtures were removed; its dedicated stack is stopped with volumes retained. No production tasks, hours, bookings, status or sends were used for tests.
+- Native pre-release reads returned version 476 for MidTown and the November 4–6 agendas. Local implementation, Railway deployment, native host discovery and the coordinator's eventual authorized live write are distinct checks. Deployment/connection evidence and continuation are recorded in [the release handoff](MCP_CONTEXT_WRITE_RELEASE_2026-11-03.md); existing native reads alone do not prove the new write tool is loaded.
+
 ## Local read-only coordination MCP — November 2, 2026
 
 - Optional website/project context saves through the existing review/confirm scheduler flow and work-item JSON. No migration, schedule rewrite, booking, new hosted endpoint, CRM change or provider send is introduced. The three local stdio tools and exact connection/authentication boundaries are documented in [MCP_COORDINATION.md](MCP_COORDINATION.md).

@@ -5,6 +5,7 @@ import path from "node:path";
 import { z } from "zod";
 import { blockSchema, idSchema, sessionSchema, workItemSchema } from "../schemas";
 import { CalendarReadError, workById, type ReadState } from "./projection";
+import { taskContextRequestSchema, type TaskContextRequest } from "../task-context";
 
 const cookieName = /^sb-[\w-]+-auth-token(?:\.\d+)?$/;
 const sessionSchemaFile = z.object({ version: z.literal(1), origin: z.string(), actorId: idSchema, workspaceId: idSchema,
@@ -88,10 +89,14 @@ export class CalendarReadClient {
   serial<T>(read: () => Promise<T>): Promise<T> {
     const next = this.queue.then(read, read); this.queue = next.catch(() => undefined); return next;
   }
-  private async get(route: string) {
+  private async get(route: string, body?: unknown) {
     const session = await readSession(this.sessionFile);
     if (session.origin !== this.origin) throw new CalendarReadError("session_origin_mismatch", "This session belongs to another Calendar origin. Sign in to the configured origin.");
-    const response = await this.request(this.origin + route, { headers: { Cookie: Object.entries(session.cookies).map(([name, value]) => `${name}=${value}`).join("; "), Accept: "application/json" }, redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(30_000) });
+    const response = await this.request(this.origin + route, {
+      ...(body === undefined ? {} : { method: "POST", body: JSON.stringify(body) }),
+      headers: { Cookie: Object.entries(session.cookies).map(([name, value]) => `${name}=${value}`).join("; "), Accept: "application/json",
+        ...(body === undefined ? {} : { Origin: this.origin, "Content-Type": "application/json" }) },
+      redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(30_000) });
     const oldCookies = JSON.stringify(session.cookies); receiveCookies(response.headers, session.cookies);
     if (JSON.stringify(session.cookies) !== oldCookies) await saveSession(this.sessionFile, session);
     if (response.status === 401 || response.status === 403) { await response.body?.cancel(); throw new CalendarReadError("access_denied", "Calendar access was denied or expired. Sign in again; active workspace membership is required."); }
@@ -104,6 +109,37 @@ export class CalendarReadClient {
     if (state.actor.id !== session.actorId || state.workspaceId !== session.workspaceId)
       throw new CalendarReadError("session_identity_changed", "Calendar account or workspace changed. Sign in again explicitly.");
     return state;
+  }
+  async updateTaskContext(raw: TaskContextRequest) {
+    const input = taskContextRequestSchema.parse(raw);
+    const before = await this.state();
+    if (before.actor.role !== "owner") throw new CalendarReadError("access_denied", "Only the owner can update task context.");
+    if (input.workspaceId !== before.workspaceId) throw new CalendarReadError("workspace_mismatch", "Read the task from the signed-in workspace first.");
+    // Do not reject an old version here: the server reconciles exact retries first.
+    try {
+      const { response, session } = await this.get("/api/task-context", input);
+      const data = JSON.parse(new TextDecoder().decode(await boundedResponse(response, 20_000_000)));
+      if (!response.ok) {
+        const messages: Record<string, string> = {
+          stale_version: "Calendar changed. Read the task again and review your intended patch before starting a new operation.",
+          operation_conflict: "Operation reconciliation failed. Retry only with the exact original patch, version and operation ID.",
+          workspace_mismatch: "This session belongs to another workspace.",
+          invalid_context: "The patch is invalid for this task. Waiting-reason edits require an already-waiting task.",
+          save_uncertain: "Save outcome unknown. Retry the exact same arguments and operation ID to reconcile; do not create a new operation.",
+        };
+        if (messages[data.code]) throw new CalendarReadError(data.code, messages[data.code]);
+        throw new CalendarReadError("save_uncertain", "The save could not be confirmed. Retry the exact same arguments and operation ID to reconcile safely.");
+      }
+      const state = parseState(data.state);
+      if (state.actor.id !== session.actorId || state.workspaceId !== session.workspaceId)
+        throw new Error("Identity changed after save");
+      const receipt = z.object({ operationId: z.literal(input.operationId), workItemId: z.literal(input.workItemId),
+        outcome: z.enum(["committed", "replayed"]), notifications: z.literal("none") }).strict().parse(data.receipt);
+      return { state, receipt };
+    } catch (error) {
+      if (error instanceof CalendarReadError) throw error;
+      throw new CalendarReadError("save_uncertain", "Save outcome unknown. Retry the exact same arguments and operation ID to reconcile; do not create a new operation.");
+    }
   }
   async attachment(state: ReadState, workItemId: string, attachmentId: string) {
     workById(state, workItemId); idSchema.parse(attachmentId);
@@ -144,7 +180,7 @@ export class CalendarReadClient {
       contentRetrieved: false, note: "Private bearer download link, valid for at most 60 seconds from signing. Retrieve now or call again. File contents have not been interpreted; do not publish this link." };
   }
 }
-/** Interactive setup only; the MCP server never registers login or mutation tools. */
+/** Interactive setup only; the MCP server never exposes credentials or a login tool. */
 export async function signIn(origin: string, email: string, password: string, allowLocal = false, request = fetch): Promise<CalendarSession> {
   origin = calendarOrigin(origin, allowLocal);
   const response = await request(origin + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json", Origin: origin }, body: JSON.stringify({ email, password }), redirect: "manual", signal: AbortSignal.timeout(30_000) });

@@ -99,8 +99,9 @@ function saveProposal(state: StoredState, actor: Actor, proposal: SchedulePropos
   trustedActor(state, actor);
   if (proposal.status !== "ready" || proposal.requiresApproval) throw new Error("This change needs approval or different scheduling dates.");
   if (actor.role === "viewer") throw new Error("Viewers cannot change the schedule.");
+  const contextOnly = proposal.commands.length === 1 && proposal.commands[0].type === "context_update";
   const event: WorkEvent = {
-    id: randomUUID(), operationId: proposal.operationId, actorId: actor.id, actorName: actor.name, type,
+    id: randomUUID(), operationId: proposal.operationId, actorId: actor.id, actorName: actor.name, type: contextOnly ? "task_context_updated" : type,
     summary: proposal.summary, itemIds: proposal.affectedItemIds, createdAt: new Date().toISOString(), version: state.version + 1,
     before: structuredClone({ items: state.items, sessions: state.sessions, blocks: state.blocks }),
     after: structuredClone({ items: proposal.items, sessions: proposal.sessions, blocks: proposal.blocks }), undoneBy: null,
@@ -110,7 +111,7 @@ function saveProposal(state: StoredState, actor: Actor, proposal: SchedulePropos
   state.events.unshift(event);
   state.operationHashes ??= {};
   state.operationHashes[proposal.operationId] = commandHash(proposal.commands);
-  state.notifications.unshift(...buildCommitNotifications(event, { ...state, actor }).map(n => ({ ...n, status: "captured" as const })));
+  if (!contextOnly) state.notifications.unshift(...buildCommitNotifications(event, { ...state, actor }).map(n => ({ ...n, status: "captured" as const })));
   return event;
 }
 export function commitDemoProposal(actor: Actor, proposal: ScheduleProposal) {

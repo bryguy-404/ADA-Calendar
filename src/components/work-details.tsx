@@ -1,4 +1,5 @@
 "use client";
+import { WaitingReasonEditor } from "./waiting-reason-editor";
 import { WorkContextDetails } from "./work-context";
 import { workTimeline } from "@/lib/work-timeline";
 import { useEffect, useState } from "react";
@@ -360,6 +361,7 @@ export function WorkDetails({
           <span>Waiting · {item.blockedReason || "Awaiting client input"}</span>
         </div>
       )}
+      {owner && item.status === "waiting" && <WaitingReasonEditor key={item.id} item={item} state={state} onState={onState} />}
       {owner && (
         <div className="detail-actions">
           <button className="secondary" onClick={onEdit}>

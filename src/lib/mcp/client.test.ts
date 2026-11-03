@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chmod, mkdtemp, rm, stat, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { boundedResponse, CalendarReadClient, calendarOrigin, readSession, saveSession, signIn, type CalendarSession } from "./client";
 import { fixture, now, origin } from "./test-fixtures";
 
@@ -52,6 +52,42 @@ describe("private session and fresh authorized reads", () => {
     expect(result).toEqual({ ...session, cookies: { "sb-fictional-auth-token": "login-cookie" } });
     expect(JSON.stringify(result)).not.toContain("fictional-password");
     expect(request.mock.calls[0][1]).toMatchObject({ method: "POST", redirect: "manual", headers: { Origin: origin } });
+  });
+});
+
+describe("scoped authenticated MCP writes", () => {
+  const input = () => ({ workspaceId: state.workspaceId, workItemId: "website", baseVersion: state.version,
+    operationId: randomUUID(), patch: { workContext: { progressNote: "Verified fixture result" } } });
+  it("uses same-origin authenticated POST, checks identity and returns only the validated receipt and safe state", async () => {
+    const patch = input(), receipt = { operationId: patch.operationId, workItemId: "website", outcome: "committed", notifications: "none" };
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(state))
+      .mockResolvedValueOnce(Response.json({ state: { ...state, version: state.version + 1, emailDrafts: ["private"] }, receipt }));
+    const result = await new CalendarReadClient(origin, file, false, request).updateTaskContext(patch);
+    expect(result.receipt).toEqual(receipt); expect(result.state).not.toHaveProperty("emailDrafts");
+    expect(request.mock.calls[1]).toEqual([origin + "/api/task-context", expect.objectContaining({ method: "POST", redirect: "manual", body: JSON.stringify(patch),
+      headers: expect.objectContaining({ Origin: origin, "Content-Type": "application/json", Cookie: "sb-fictional-auth-token=private-test-cookie" }) })]);
+  });
+  it("keeps exact retry arguments after a lost response and accepts the server's replay receipt", async () => {
+    const patch = input();
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(state)).mockRejectedValueOnce(new Error("Connection lost"))
+      .mockResolvedValueOnce(Response.json({ ...state, version: state.version + 1 }))
+      .mockResolvedValueOnce(Response.json({ state: { ...state, version: state.version + 1 }, receipt: { operationId: patch.operationId, workItemId: "website", outcome: "replayed", notifications: "none" } }));
+    const client = new CalendarReadClient(origin, file, false, request);
+    await expect(client.updateTaskContext(patch)).rejects.toMatchObject({ code: "save_uncertain" });
+    expect((await client.updateTaskContext(patch)).receipt.outcome).toBe("replayed");
+    expect(request.mock.calls[1][1]?.body).toBe(request.mock.calls[3][1]?.body);
+  });
+  it.each(["workspace", "requester", "viewer"])("does not POST through a %s mismatch", async kind => {
+    const patch = input(); if (kind === "workspace") patch.workspaceId = "another-workspace";
+    const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ ...state, actor: { ...state.actor, role: kind === "workspace" ? "owner" : kind } }));
+    await expect(new CalendarReadClient(origin, file, false, request).updateTaskContext(patch)).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it("returns a safe stale-version error rather than retrying with a new version or leaking provider diagnostics", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValueOnce(Response.json(state))
+      .mockResolvedValueOnce(Response.json({ code: "stale_version", error: "private diagnostic" }, { status: 409 }));
+    await expect(new CalendarReadClient(origin, file, false, request).updateTaskContext(input())).rejects.toMatchObject({ code: "stale_version", message: expect.not.stringContaining("private") });
+    expect(request).toHaveBeenCalledTimes(2);
   });
 });
 

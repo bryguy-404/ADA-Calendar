@@ -68,6 +68,12 @@ function eventFor(state: AppState, proposal: ScheduleProposal, type = "schedule_
 }
 
 async function persist(state: AppState, proposal: ScheduleProposal, options: { requestId?: string; undoId?: string; type?: string } = {}) {
+  if (proposal.commands.length === 1 && proposal.commands[0].type === "context_update") {
+    const db = await getSupabaseServerClient();
+    const { error } = await db.rpc("commit_task_context", { p_proposal: proposal });
+    check(error, "Save task context");
+    return getLiveState(state.actor.id);
+  }
   const event = eventFor(state, proposal, options.type);
   const notifications = buildCommitNotifications(event, state);
   const db = await getSupabaseServerClient();
@@ -108,7 +114,7 @@ export async function commitLiveProposal(actor: Actor, proposal: ScheduleProposa
   check(previous.error, "Check operation");
   if (previous.data) {
     if (previous.data.actor_id !== trusted.id || canonical(previous.data.operation_payload) !== canonical(proposal.commands)) throw new Error("That operation id belongs to a different command or account.");
-    return state;
+    return proposal.commands.some(command => command.type === "context_update") ? getLiveState(trusted.id) : state;
   }
   if (proposal.baseVersion !== state.version) throw new Error("Your calendar changed. Review a fresh proposal before saving.");
   // Never persist model/client supplied sessions directly. Recompute from commands and the latest trusted state.

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { addDays, isDate, isInstant } from "./time";
-import { workContextSchema } from "./work-context";
+import { taskContextPatchSchema, workContextSchema } from "./work-context";
 
 export const idSchema = z.string().min(1).max(150).regex(/^[\w-]+$/);
 export const reviewFingerprintSchema = z.string().regex(/^[a-f0-9]{64}$/, "Check a fresh schedule preview.");
@@ -53,6 +53,7 @@ export const smartFitRequestSchema = z.object({
   .refine(value => !value.dates || value.dates.every(date => date >= value.startDate && date <= value.endDate), "Booking dates must fall inside the requested range.")
   .refine(value => value.distribution !== "per_day" || value.minutes <= 480, "Daily hours cannot exceed eight hours.");
 export const commandSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("context_update"), itemId: idSchema, patch: taskContextPatchSchema }).strict(),
   z.object({ type: z.literal("create"), item: workItemSchema, sessions: z.array(sessionSchema).max(1000).optional(), smartFit: smartFitRequestSchema.optional(), bookingWindow: bookingWindowSchema.optional(), urgent: z.boolean().optional(), ...override }).strict(),
   z.object({ type: z.literal("fit"), itemId: idSchema, request: smartFitRequestSchema }).strict(),
   z.object({ type: z.literal("reorder_day"), date: dateSchema,

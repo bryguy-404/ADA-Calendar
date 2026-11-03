@@ -15,6 +15,7 @@ export function WorkContextFields({ value, onChange }: { value?: WebsiteWorkCont
     <Field label="Requirements"><select aria-label="Requirements" value={context.requirementsStatus} onChange={e => patch({ requirementsStatus: e.target.value as WebsiteWorkContext["requirementsStatus"] })}>
       <option value="tentative">Tentative — needs clarification</option><option value="confirmed">Confirmed by the person saving this work</option>
     </select></Field>
+    <Field label="Requirements notes"><textarea aria-label="Requirements notes" rows={2} value={context.requirementsNote ?? ""} onChange={e => patch({ requirementsNote: e.target.value })} maxLength={4000} /></Field>
     <Field label="Current progress"><textarea aria-label="Current progress" rows={2} value={context.progressNote} onChange={e => patch({ progressNote: e.target.value })} maxLength={4000} /></Field>
     <Field label="Materials"><select aria-label="Materials" value={context.materialsStatus} onChange={e => patch({ materialsStatus: e.target.value as WebsiteWorkContext["materialsStatus"] })}>
       <option value="not_checked">Not checked</option><option value="ready">Ready according to the saved notes</option><option value="missing">Some materials are missing</option><option value="inaccessible">Some materials cannot be accessed</option>
@@ -35,6 +36,7 @@ export function WorkContextDetails({ context }: { context: WebsiteWorkContext })
       <div><dt>Materials</dt><dd>{context.materialsStatus.replaceAll("_", " ")} (reported)</dd></div>
     </dl>
     {context.requestedResult && <p><strong>Requested result:</strong> {context.requestedResult}</p>}
+    {context.requirementsNote && <p><strong>Requirements notes:</strong> {context.requirementsNote}</p>}
     {context.progressNote && <p><strong>Current progress:</strong> {context.progressNote}</p>}
     {context.materialsNote && <p><strong>Materials notes:</strong> {context.materialsNote}</p>}
     {context.manualOnly && <p>Manual coordination only.</p>}

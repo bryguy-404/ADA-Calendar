@@ -8,6 +8,7 @@ import {
 } from "./time";
 import { bookingWindowSchema, commandSchema } from "./schemas";
 import { effectiveTimelineMode } from "./work-timeline";
+import { applyTaskContext } from "./task-context";
 
 type Interval = { start: number; end: number };
 type PlanOptions = { now?: string; operationId?: string; approveDisplacement?: boolean };
@@ -876,6 +877,23 @@ export function planCommands(snapshot: ScheduleSnapshot, commands: WorkCommand[]
   const result: ScheduleProposal = { id: uuid(), operationId: options.operationId ?? uuid(), baseVersion: snapshot.version, actorId: actor.id, commands: clone(commands), status: "ready", requiresApproval: false, items: clone(snapshot.items), sessions: clone(snapshot.sessions), blocks: clone(snapshot.blocks), affectedItemIds: [], summary: [], conflicts: [], alternatives: [], createdAt: now };
   const fail = (errors: ScheduleConflict[], status: "infeasible" | "approval_required" = "infeasible"): ScheduleProposal => ({ ...result, status, requiresApproval: status === "approval_required", conflicts: errors, items: clone(snapshot.items), sessions: clone(snapshot.sessions), blocks: clone(snapshot.blocks) });
   if (actor.role === "viewer") return fail([conflict("forbidden", "Viewers cannot change or book work.")]);
+  // Descriptive edits never enter scheduling, forecast refresh or timeline latching.
+  // Existing waiting bookings and historical/legacy records remain byte-identical.
+  if (commands.some(command => command.type === "context_update")) {
+    if (actor.role !== "owner") return fail([conflict("forbidden", "Only the owner can update existing task context.")]);
+    const command = commands[0];
+    if (commands.length !== 1 || command.type !== "context_update")
+      return fail([conflict("context_mixed_commands", "Save task context separately from scheduling and status changes.")]);
+    const item = snapshot.items.find(item => item.id === command.itemId);
+    if (!item) return fail([conflict("unknown_work", "Work item unavailable in this workspace.")]);
+    try {
+      const updated = applyTaskContext(item, command.patch, now);
+      return { ...result, items: result.items.map(item => item.id === updated.id ? updated : item),
+        affectedItemIds: [item.id], summary: [`Updated task context for ${updated.title}. Schedule, effort and status unchanged.`] };
+    } catch (error) {
+      return fail([conflict("invalid_context", error instanceof Error ? error.message : "Invalid task context.", [item.id])]);
+    }
+  }
   const settingsErrors = settingsConflicts(snapshot, now);
   if (settingsErrors.length) return fail(settingsErrors);
   if (actor.role !== "owner" && commands.some((command) => command.type !== "create")) return fail([conflict("forbidden", "Requesters can submit new work, but cannot edit existing work.")]);

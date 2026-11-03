@@ -16,6 +16,7 @@ import {newWorkItem} from '../src/lib/work.ts';
 import {localDate, localDateTime, addDays, nextWorkDate} from '../src/lib/time.ts';
 import {signIn, saveSession} from '../src/lib/mcp/client.ts';
 import {readStatus} from './crm-fullstack/stack.mjs';
+import {exerciseContextWrites} from './mcp-context-checks.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url)),origin='http://127.0.0.1:3196';
 const stack='/private/tmp/ada-calendar-mcp-local',container='supabase_db_ada-calendar-mcp-test';
@@ -41,6 +42,8 @@ async function prepareStack() {
   const code=await new Promise((resolve,reject)=>{start.on('error',reject);start.on('exit',resolve);});
   writeFileSync(stack+'/private-start.log',Buffer.concat(chunks),{mode:0o600});
   assert.equal(code,0,'Local test stack start failed; inspect private log without printing credentials.');
+  const migrated=execFileSync(path.join(root,'node_modules/.bin/supabase'),['migration','up','--local','--workdir',stack],{encoding:'utf8',stdio:['ignore','pipe','pipe']});
+  writeFileSync(stack+'/private-migrations.log',migrated,{mode:0o600});
   return readStatus(path.join(root,'node_modules/.bin/supabase'),stack,'http://127.0.0.1:55621');
 }
 async function mcp(file,mode='legacy') {
@@ -123,8 +126,8 @@ async function main() {
   const sessionFiles={};
   for(const actor of [owner,viewer,requester,other]){const file=path.join(privateDir,actor.id+'.json');await saveSession(file,await signIn(origin,actor.email,password,true));sessionFiles[actor.id]=file;}
   const before=await api('state'),beforeHash=hash(before),ownerMcp=await mcp(sessionFiles[owner.id]);
-  const listed=await ownerMcp.listTools();assert.deepEqual(listed.tools.map(tool=>tool.name).sort(),['get_attachment','get_day_agenda','get_work_item']);
-  assert.ok(listed.tools.every(tool=>tool.annotations.readOnlyHint===true&&tool.annotations.destructiveHint===false));
+  const listed=await ownerMcp.listTools();assert.deepEqual(listed.tools.map(tool=>tool.name).sort(),['get_attachment','get_day_agenda','get_work_item','update_task_context']);
+  assert.ok(listed.tools.every(tool=>tool.annotations.readOnlyHint===(tool.name!=='update_task_context')&&tool.annotations.destructiveHint===false));
   const agenda=await call(ownerMcp,'get_day_agenda',{date});
   assert.equal(agenda.needsClassification[0].workItemId,'mcp-website');assert.equal(agenda.needsClassification[0].category,'it');assert.equal(agenda.needsClassification[0].coordination.automaticExecutionAllowed,false);
   assert.equal(agenda.manualWork[0].workItemId,'mcp-software');assert.equal(agenda.websiteWork.length,0);
@@ -146,6 +149,7 @@ async function main() {
     let rejected=false;try{const result=await ownerMcp.callTool({name,arguments:args});rejected=result.isError===true;}catch{rejected=true;}assert.equal(rejected,true,'Unknown mutations and malformed reads must fail.');
   }
   assert.equal(hash(await api('state')),beforeHash,'All MCP reads must leave work, history, events and settings byte-identical');
+  await exerciseContextWrites({admin,config,owner,viewer,requester,other,password,users,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
   const noSession=await fetch(origin+'/api/state');assert.notEqual(noSession.status,200);
   checked(await admin.from('workspace_members').update({active:false}).eq('workspace_id',workspaceId).eq('user_id',owner.id));
   const revoked=await call(ownerMcp,'get_day_agenda',{date},true);assert.equal(revoked.code,'access_denied');
@@ -165,7 +169,8 @@ finally {
     for(const id of [workspaceId,otherWorkspaceId]){
       assert.match(id,/^[a-f0-9-]{36}$/);
       const statements=['begin;',`delete from pgmq.q_ada_notifications where message->>'notificationId' in (select id from public.notifications where workspace_id='${id}');`];
-      for(const table of ['notifications','attachments','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${id}';`);
+      statements.push(`delete from public.crm_changes where integration_id in (select id from public.crm_integrations where workspace_id='${id}');`);
+      for(const table of ['notifications','attachments','crm_task_links','crm_client_mappings','crm_integrations','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${id}';`);
       statements.push('commit;');execFileSync('docker',['exec','-i',container,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:statements.join('\n'),stdio:['pipe','pipe','pipe']});
     }
     for(const id of users)checked(await admin.auth.admin.deleteUser(id));
