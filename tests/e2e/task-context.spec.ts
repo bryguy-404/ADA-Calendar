@@ -27,6 +27,9 @@ async function setup(page: Page, width: number, loseResponse = false) {
   });
   await page.setViewportSize({ width, height: 1000 }); await page.clock.setFixedTime(new Date(now));
   await page.goto("/?work=website");
+  // Mobile initialization selects agenda in its first animation frame. Wait for
+  // that effect before clicking day, otherwise it can overwrite our test click.
+  if (width <= 760) await expect(page.getByRole("button", { name: "agenda", exact: true })).toHaveClass(/active/);
   // Wait for an actual hydrated interaction before dispatching the fixture refresh.
   await page.getByRole("button", { name: "day", exact: true }).click();
   await expect(page.getByRole("button", { name: "day", exact: true })).toHaveClass(/active/);
