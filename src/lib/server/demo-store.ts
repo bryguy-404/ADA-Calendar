@@ -12,6 +12,7 @@ import { assertReviewedProposal } from "./preview";
 import type { PersonalNote } from "../notes";
 import { completedDayFromCommands, undoUnavailableReason } from "../undo";
 import { compactActivity } from "../work-activity";
+import type { PreparedSchedule } from "./mcp-scheduling";
 
 export type AIOperationInput = { id: string; kind: "assistant" | "transcribe"; inputHash: string; reserveUsd: number; parentId?: string };
 export type AIOperationResult = { status: "claimed" | "processing" | "completed" | "failed"; result: unknown | null };
@@ -19,7 +20,7 @@ export type PrivateAIOperation = { kind: string; status: "processing" | "complet
 type Reservation = { actorId: string; amountUsd: number; settled: boolean };
 type StoredAIOperation = PrivateAIOperation & { actorId: string; workspaceId: string; inputHash: string; parentId?: string };
 type StoredState = Omit<AppState, "events"> & { events: WorkEvent[]; aiReservations?: Record<string, Reservation>; aiMonth?: string; aiOperations?: Record<string, StoredAIOperation>; operationHashes?: Record<string, string>; pendingAttachmentIds?: string[];
-  personalNotes?: { workspaceId: string; authorId: string; note: PersonalNote }[] };
+  personalNotes?: { workspaceId: string; authorId: string; note: PersonalNote }[]; mcpScheduleOperations?: Record<string, PreparedSchedule> };
 const globalStore = globalThis as unknown as { adaWriteQueue?: Promise<unknown> };
 export function demoEnabled() { return process.env.NODE_ENV !== "production" && process.env.ADA_DEMO_MODE === "true"; }
 export function demoDirectory() { return process.env.ADA_DATA_DIR || path.join(process.cwd(), ".data"); }
@@ -71,7 +72,8 @@ export function assertDemoNotesOwner(state: StoredState, actor: Actor) {
 const commandHash = (commands: ScheduleProposal["commands"]) => createHash("sha256").update(JSON.stringify(commands)).digest("hex");
 function visible(state: StoredState, actor: Actor): AppState {
   trustedActor(state, actor);
-  const { aiReservations: _reservations, aiMonth: _month, aiOperations: _operations, operationHashes: _hashes, pendingAttachmentIds: _pending, personalNotes: _notes, ...publicState } = state;
+  const { aiReservations: _reservations, aiMonth: _month, aiOperations: _operations, operationHashes: _hashes, pendingAttachmentIds: _pending, personalNotes: _notes, mcpScheduleOperations: _mcp, ...publicState } = state;
+  void _mcp;
   void _reservations; void _month; void _operations; void _hashes; void _notes;
   return { ...publicState, actor,
     events: compactActivity(state.events),

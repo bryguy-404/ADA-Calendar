@@ -1,5 +1,17 @@
 # ADA Calendar — current handoff
 
+## November 16, 2026 — active assignment: MCP scheduling extension
+
+Assignment **2026-11-16/ada-calendar/mcp-scheduling** is active. Bryan authorized adding compact discovery/availability, task creation, clean-fit booking, exact planned-session rescheduling, and ongoing/unknown-effort visibility through native MCP, with shared scheduler/server owner authorization and tested rollout. November 3 context writes and November 6 Growing Kids recovery are complete and are not active work.
+
+Implementation is isolated on `codex/mcp-scheduling` at `/Users/bryanarambula/.codex/worktrees/calendar-readonly-mcp/ada-calendar/.data/mcp-scheduling-checkout`, based on verified remote main `e797f45e6e36798cc4a7f2ff9e0ff7c5b19436b1`. This active adapter checkout, registration and session remain in place; no chat activation or Codex restart is authorized here. The original project checkout has unrelated `docs/RESUME.md` and `next-env.d.ts` changes; preserve them.
+
+Current work: source implementation exists in the isolated checkout (four new tools, owner API, immutable SQL preview record, exact shared-scheduler plans, persistent commit/replay and current readback). Remote main `e797f45` is verified and **contains** notification-preference baseline `088d208`; the original checkout is older, not later. Saved requester opt-outs are preserved. The additive preview migration is deployed; application rollout is next and no adapter activation has happened.
+
+**Exact next action:** finish the immediate post-migration hash/ledger reads, then commit/push the application and verify Railway deployment, hosted CI, standalone production read-only eight-tool discovery and unchanged calendar/preference hashes. All **190 browser tests** passed (9.4m). Final `npm run check` passed **1,483 tests/82 files**, lint/types/build. Local actual Auth/SQL/Storage/browser/native-stdio acceptance and Claude gateway checks passed; evidence `.data/mcp-acceptance/evidence.json`. SQL lint has only two existing unrelated warnings. Migration commit `e007429361a71c455aa0e3d0a6314dc7e7c81c12` is pushed to main and the dry-run-verified `202611160001_mcp_scheduling.sql` has been applied to the existing production Supabase project (no seeds/roles/Vault changes). Application push and adapter activation are still pending. Baseline version **634** (126 tasks, 229 sessions, 11 blocks), hashes/preferences in `.data/mcp-release-2026-11-16/`. Do not answer historical token questions or stop at a plan. Detailed contracts/results/rollback and activation limitations are in `docs/MCP_SCHEDULING_RELEASE_2026-11-16.md`.
+
+The active adapter checkout/registration/session and the original checkout's unrelated dirty files remain untouched (apart from the active checkout's assignment pointer). Claude gateway `/Users/bryanarambula/Documents/Codex/ada-agency-workflows/scripts/calendar_readonly.py` must remain read-only; its pure functions are tested without loading its private config/session. No other-chat switch, global skill edits, app restart, live test bookings or stakeholder messages are authorized here.
+
 ## November 3, 2026 — scoped context writes deployed; native reconnect pending
 
 The website-context/read-only release below is complete. Bryan's new authorized assignment adds `update_task_context` and an owner frontend **Edit waiting reason** control. Preserve this MCP checkout/session and unrelated original-checkout edits. Scope and retry rules are in [MCP_COORDINATION.md](MCP_COORDINATION.md).

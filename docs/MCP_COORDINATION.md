@@ -1,5 +1,15 @@
 # Daily work context coordination
 
+## Scoped scheduling — November 16, 2026
+
+The scheduling extension adds `find_calendar_items`, `get_available_slots`, `prepare_schedule_change` and `commit_schedule_change` to the existing four tools. Exact contracts, examples, test evidence and release/activation status are in [MCP_SCHEDULING_RELEASE_2026-11-16.md](MCP_SCHEDULING_RELEASE_2026-11-16.md). The older sections below describe the original read/context contracts, which remain supported; their historical tool counts do not limit the new extension.
+
+Read exact task context and discover current IDs/version. Prepare one authorized typed change, review its bounded exact diff, then commit its returned operation ID/version/fingerprint. Already-authorized clean-fit work needs no extra blanket permission question. After uncertain responses, retry the **identical** arguments/operation ID; persistent preview/commit ledgers reconcile across restarts. Stale plans fail without displacement. Protected moves require explicit per-session override. Ongoing visibility and unknown effort are separate from milestones/deadlines, and preserve existing bookings/history. Scheduling does not authorize executing website work, completion, uploads or messages.
+
+New tools use owner-authenticated compact `POST /api/mcp-scheduling/{discover,availability,prepare,commit}` endpoints with pinned session identity. They do not return full workspace dumps. Immutable private preview records use owner RLS; actual mutations reuse the shared scheduler and normal locked schedule transaction. Scheduling commits retain notifications for opted-in recipients and honor all saved opt-outs; prepare, rejected saves and replay add no mail. Context-only updates remain silent.
+
+Preserve the registered checkout/session and separate read-only Claude gateway. Standalone tool discovery is not actual discovery inside an already-running chat. The coordinator handles activation after reviewing release evidence; this assignment does not switch other chats or restart Codex.
+
 ## Scoped writes — November 3, 2026
 
 Bryan authorized owner-authenticated context updates and safe waiting-reason edits. `update_task_context` is the only write tool. It calls `POST /api/task-context`, which validates an allowlisted patch, builds a dedicated `context_update` command through the shared scheduler, and commits under the existing workspace lock/version/event ledger. Migration `202611030001_task_context.sql` adds a narrow RPC that updates task JSON and the audit ledger without writing sessions, blocks, settings or notifications. CRM receives its existing change-feed projection without stakeholder email. Other save/notification behavior is unchanged.

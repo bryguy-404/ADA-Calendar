@@ -17,10 +17,11 @@ import {localDate, localDateTime, addDays, nextWorkDate} from '../src/lib/time.t
 import {signIn, saveSession} from '../src/lib/mcp/client.ts';
 import {readStatus} from './crm-fullstack/stack.mjs';
 import {exerciseContextWrites} from './mcp-context-checks.mjs';
+import {exerciseScheduling} from './mcp-scheduling-checks.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url)),origin='http://127.0.0.1:3196';
 const stack='/private/tmp/ada-calendar-mcp-local',container='supabase_db_ada-calendar-mcp-test';
-const output=path.join(root,'test-results/mcp'),privateDir=mkdtempSync(path.join(tmpdir(),'ada-mcp-session-'));
+const output=path.join(root,'.data/mcp-acceptance'),privateDir=mkdtempSync(path.join(tmpdir(),'ada-mcp-session-'));
 mkdirSync(output,{recursive:true});
 const checked=r=>{if(r.error)throw new Error(r.error.message);return r.data;};
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -82,10 +83,14 @@ async function main() {
   const env={...cleanEnv,ADA_DEMO_MODE:'false',NEXT_TELEMETRY_DISABLED:'1',ADA_NEXT_DIST_DIR:'.next-mcp-test',APP_URL:origin,NEXT_PUBLIC_APP_URL:origin,
     NEXT_PUBLIC_SUPABASE_URL:config.API_URL,NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:config.ANON_KEY,SUPABASE_SERVICE_ROLE_KEY:config.SERVICE_ROLE_KEY,
     EMAIL_MODE:'capture',OPENAI_API_KEY:'',RESEND_API_KEY:'',WORKER_SECRET:'',ADA_CRM_INTEGRATION_ENABLED:'false'};
-  const fd=openSync(path.join(output,'server.log'),'w',0o600);
+  const restartApp=async()=>{
+    if(child&&child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}
+  const fd=openSync(path.join(output,'server.log'),'a',0o600);
   child=spawn(process.execPath,[path.join(root,'node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port','3196'],{cwd:root,env,stdio:['ignore',fd,fd]});closeSync(fd);
   const deadline=Date.now()+90000;
   for(;;){if(child.exitCode!==null)throw new Error('Local app exited.');try{if((await fetch(origin+'/api/health')).ok)break;}catch{}if(Date.now()>deadline)throw new Error('Local app startup timed out.');await delay(300);}
+  };
+  await restartApp();
   browser=await chromium.launch({channel:'chrome'});const context=await browser.newContext({viewport:{width:1440,height:1000}});
   const api=async(route,body)=>{const response=body===undefined?await context.request.get(origin+'/api/'+route):await context.request.post(origin+'/api/'+route,{headers:{Origin:origin},data:body});const data=await response.json();assert.equal(response.status(),200,`${route}: ${data.error||'failed'}`);return data;};
   await api('auth/login',{email:owner.email,password});
@@ -126,8 +131,8 @@ async function main() {
   const sessionFiles={};
   for(const actor of [owner,viewer,requester,other]){const file=path.join(privateDir,actor.id+'.json');await saveSession(file,await signIn(origin,actor.email,password,true));sessionFiles[actor.id]=file;}
   const before=await api('state'),beforeHash=hash(before),ownerMcp=await mcp(sessionFiles[owner.id]);
-  const listed=await ownerMcp.listTools();assert.deepEqual(listed.tools.map(tool=>tool.name).sort(),['get_attachment','get_day_agenda','get_work_item','update_task_context']);
-  assert.ok(listed.tools.every(tool=>tool.annotations.readOnlyHint===(tool.name!=='update_task_context')&&tool.annotations.destructiveHint===false));
+  const listed=await ownerMcp.listTools();assert.deepEqual(listed.tools.map(tool=>tool.name).sort(),['commit_schedule_change','find_calendar_items','get_attachment','get_available_slots','get_day_agenda','get_work_item','prepare_schedule_change','update_task_context']);
+  assert.ok(listed.tools.every(tool=>tool.annotations.readOnlyHint===(!['update_task_context','prepare_schedule_change','commit_schedule_change'].includes(tool.name))&&tool.annotations.destructiveHint===false));
   const agenda=await call(ownerMcp,'get_day_agenda',{date});
   assert.equal(agenda.needsClassification[0].workItemId,'mcp-website');assert.equal(agenda.needsClassification[0].category,'it');assert.equal(agenda.needsClassification[0].coordination.automaticExecutionAllowed,false);
   assert.equal(agenda.manualWork[0].workItemId,'mcp-software');assert.equal(agenda.websiteWork.length,0);
@@ -149,6 +154,7 @@ async function main() {
     let rejected=false;try{const result=await ownerMcp.callTool({name,arguments:args});rejected=result.isError===true;}catch{rejected=true;}assert.equal(rejected,true,'Unknown mutations and malformed reads must fail.');
   }
   assert.equal(hash(await api('state')),beforeHash,'All MCP reads must leave work, history, events and settings byte-identical');
+  await exerciseScheduling({restartApp,admin,config,owner,viewer,requester,other,password,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
   await exerciseContextWrites({admin,config,owner,viewer,requester,other,password,users,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
   const noSession=await fetch(origin+'/api/state');assert.notEqual(noSession.status,200);
   checked(await admin.from('workspace_members').update({active:false}).eq('workspace_id',workspaceId).eq('user_id',owner.id));

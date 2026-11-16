@@ -91,6 +91,30 @@ describe("scoped authenticated MCP writes", () => {
   });
 });
 
+describe("compact MCP scheduling transport", () => {
+  const source = { actorId: state.actor.id, workspaceId: state.workspaceId, mode: "live", scheduleVersion: 17 };
+  it("makes one compact API call with the pinned actor/workspace instead of fetching full state", async () => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ source, results: [{ id: "website", title: "Fictional" }], nextOffset: null }));
+    const result = await new CalendarReadClient(origin, file, false, request).scheduling("discover", { kind: "tasks" });
+    expect(result.results).toHaveLength(1); expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0]).toEqual([origin + "/api/mcp-scheduling/discover", expect.objectContaining({ method: "POST", redirect: "manual",
+      body: JSON.stringify({ actorId: session.actorId, workspaceId: session.workspaceId, input: { kind: "tasks" } }) })]);
+  });
+  it("treats a lost commit response as uncertain and retries the identical envelope", async () => {
+    const input = { operationId: randomUUID(), workspaceId: state.workspaceId, baseVersion: 17, reviewFingerprint: "0".repeat(64) };
+    const request = vi.fn<typeof fetch>().mockRejectedValueOnce(new Error("Lost response"))
+      .mockResolvedValueOnce(Response.json({ source, receipt: { operationId: input.operationId, outcome: "replayed" } }));
+    const client = new CalendarReadClient(origin, file, false, request);
+    await expect(client.scheduling("commit", input)).rejects.toMatchObject({ code: "save_uncertain" });
+    expect((await client.scheduling("commit", input)).receipt).toMatchObject({ outcome: "replayed" });
+    expect(request.mock.calls[0][1]?.body).toBe(request.mock.calls[1][1]?.body);
+  });
+  it.each(["actorId", "workspaceId", "mode"])("rejects changed response %s", async field => {
+    const request = vi.fn<typeof fetch>().mockResolvedValue(Response.json({ source: { ...source, [field]: "other" } }));
+    await expect(new CalendarReadClient(origin, file, false, request).scheduling("discover", { kind: "tasks" })).rejects.toMatchObject({ code: "session_identity_changed" });
+  });
+});
+
 describe("authorized source retrieval", () => {
   it("retrieves exact Markdown with a hash and no Calendar credentials on the storage request", async () => {
     const request = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(null, { status: 307, headers: { location: signed() } })).mockResolvedValueOnce(new Response(text));

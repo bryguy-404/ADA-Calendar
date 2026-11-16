@@ -110,6 +110,26 @@ export class CalendarReadClient {
       throw new CalendarReadError("session_identity_changed", "Calendar account or workspace changed. Sign in again explicitly.");
     return state;
   }
+  /** Compact server projections: no full workspace crosses the adapter/model boundary. */
+  async scheduling(action: "discover" | "availability" | "prepare" | "commit", input: unknown): Promise<Record<string, unknown>> {
+    const pinned = await readSession(this.sessionFile);
+    try {
+      const { response, session } = await this.get(`/api/mcp-scheduling/${action}`, { actorId: pinned.actorId, workspaceId: pinned.workspaceId, input });
+      const data = JSON.parse(new TextDecoder().decode(await boundedResponse(response, 200_000)));
+      if (!response.ok) {
+        const codes = new Set(["stale_version", "operation_conflict", "prepare_required", "prepare_uncertain", "save_uncertain", "preview_changed", "schedule_conflict", "scope_violation", "preview_too_large", "invalid_task", "invalid_client", "invalid_requester", "invalid_session", "invalid_duration", "protected_session", "plan_changed"]);
+        if (codes.has(data.code) && typeof data.error === "string") throw new CalendarReadError(data.code, data.error.slice(0, 2000));
+        throw new CalendarReadError("request_rejected", "Calendar rejected this request. Verify the exact IDs and typed arguments.");
+      }
+      if (data.source?.actorId !== session.actorId || data.source?.workspaceId !== session.workspaceId || data.source?.mode !== "live")
+        throw new CalendarReadError("session_identity_changed", "Calendar identity changed or is not live. Sign in explicitly.");
+      return data;
+    } catch (error) {
+      if (error instanceof CalendarReadError) throw error;
+      throw new CalendarReadError(action === "prepare" || action === "commit" ? "save_uncertain" : "read_failed",
+        "Calendar response could not be confirmed. For a write, retry the exact arguments and operation ID; never assume it failed or start a duplicate operation.");
+    }
+  }
   async updateTaskContext(raw: TaskContextRequest) {
     const input = taskContextRequestSchema.parse(raw);
     const before = await this.state();
