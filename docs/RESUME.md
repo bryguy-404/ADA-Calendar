@@ -1,3 +1,15 @@
+## Current assignment — November 23, 2026: requester MCP onboarding
+
+Bryan explicitly authorized Kyle and Willian to use their own existing requester accounts in Claude Code. Source assignment: `/Users/bryanarambula/Documents/Codex/2026-11-01/okay-just-very-quickly-in-my/outputs/agency-coordination/assignments/2026-11-23-calendar-requester-mcp.md`. Reread after interruptions. This supersedes completed November 16 owner scheduling work.
+
+Implement compact discovery/shared capacity and positive-estimate new submissions; clean-fit books, conflicts become owner-review requests. Preserve owner eight-tool access, Cowork reads, private notes, history and notification opt-outs. Package a portable adapter/installer with individual interactive sign-in, verification, update/removal/recovery. No real test work or teammate messages. Verify fictional API/Auth/SQL/stdio and clean-install Claude Code, required checks, then authorized release. Report actual distribution/install gaps honestly.
+
+Checkpoint: clean origin/main and installed adapter at db999014; isolated branch codex/requester-mcp under .data/requester-mcp-checkout. Both installed and primary folders are unregistered in the shared agency library; custom Calendar engineering remains tracked here, no enrollment inferred. Existing requester store.request already handles clean-fit booking versus pending request with actor-bound replay. Owner preview RPC currently owner-only. Bryan’s Claude Code eight-tool parity was verified November 23; older all-Claude-read-only notes are stale. No production writes or connection changes. Next: scope requester previews and durable replay, portable distribution, fictional acceptance tests.
+
+Implementation checkpoint: requester-scoped durable previews/commit use the shared scheduler and existing request store. Only create with positive effort and booking dates is accepted; no identity override. Capacity conflicts yield pending requests, other invalid plans yield cannot_fit. Exact pending lookup avoids the 200-row UI history cap. Private immutable SQL previews now permit active requesters only for their own new-work operations. The bundle/installer includes all runtime dependencies, individual hidden-password login, read verification and isolated Claude config. Existing installed adapters/config/session files remain untouched. 1,487 unit tests, lint, TypeScript and production build passed. Full-stack requester/owner/Cowork checks and clean-install hidden-password/native Claude/expired-session acceptance passed. Read-only production baseline: version 785, Kyle/Willian active requesters with receive_updates false. Migration commit 2c91948 is on main and migration 20261123205744 is applied; API/artifact release verification is next. Native teammate installation still requires each teammate’s own sign-in.
+
+---
+
 # ADA Calendar — current handoff
 
 ## November 16, 2026 — MCP scheduling released; coordinator activation pending

@@ -15,7 +15,7 @@ vi.mock("./server/service", async () => {
   const demo = await import("./server/demo-store");
   return { currentActor: vi.fn(async () => DEMO_MEMBERS[0]), demoEnabled: () => true,
     store: { getState: vi.fn(async (id: string) => demo.getDemoState(demo.demoActor(id))),
-      commit: demo.commitDemoProposal, hasCommittedOperation: demo.hasCommittedDemoOperation } };
+      commit: demo.commitDemoProposal, request: demo.submitDemoRequest, hasCommittedOperation: demo.hasCommittedDemoOperation } };
 });
 import { prepareSchedule, commitSchedule } from "./server/mcp-scheduling";
 import { POST } from "../app/api/[...path]/route";
@@ -89,7 +89,7 @@ describe("durable scoped MCP scheduling server", () => {
     const before = await getDemoState(owner);
     for (const actor of [DEMO_MEMBERS[1], DEMO_MEMBERS[3]]) {
       vi.mocked(currentActor).mockResolvedValue(actor);
-      expect((await send("prepare", request(), actor.id)).status).toBe(403);
+      expect((await send("prepare", request(), actor.id)).status).toBe(actor.role === "requester" ? 400 : 403);
     }
     vi.mocked(currentActor).mockResolvedValue(owner);
     expect((await send("prepare", request(), "someone-else")).status).toBe(403);
@@ -109,3 +109,57 @@ describe("durable scoped MCP scheduling server", () => {
   });
 });
 
+
+describe("requester MCP submissions", () => {
+  const requester = DEMO_MEMBERS[1];
+  async function inputFor(minutes = 60) {
+    const input = request();
+    if (input.change.kind !== "create") throw new Error("fixture");
+    input.change.task.estimatedMinutes = minutes;
+    input.change.booking!.minutes = minutes;
+    vi.mocked(currentActor).mockResolvedValue(requester);
+    return input;
+  }
+  it("books a clean fit as the requester and preserves all existing work/history", async () => {
+    const input = await inputFor(), before = await getDemoState(requester);
+    const prepared = await prepareSchedule(requester, input, before);
+    expect(prepared.plannedOutcome).toBe("booked");
+    const result = await commitSchedule(requester, commitInput(prepared), before);
+    expect(result.receipt).toMatchObject({ submissionOutcome: "booked", requestId: null });
+    const after = await getDemoState(requester);
+    expect(after.items.find(i => i.id === input.operationId)?.requesterId).toBe(requester.id);
+    expect(after.sessions.filter(s => s.workItemId !== input.operationId)).toEqual(before.sessions);
+    expect((await commitSchedule(requester, commitInput(prepared), after)).receipt.outcome).toBe("replayed");
+    expect(await getDemoState(requester)).toEqual(after);
+  });
+  it("persists only a pending request on capacity conflict and reconciles a lost response", async () => {
+    const input = await inputFor(600), before = await getDemoState(requester);
+    const prepared = await prepareSchedule(requester, input, before);
+    expect(prepared.plannedOutcome).toBe("pending"); expect(prepared.diff).toEqual({ items: [], sessions: [] });
+    const original = store.request;
+    vi.spyOn(store, "request").mockImplementationOnce(async (...args) => { await original(...args); throw new Error("Lost response"); });
+    await expect(commitSchedule(requester, commitInput(prepared), before)).rejects.toMatchObject({ code: "save_uncertain" });
+    const after = await getDemoState(requester);
+    expect(after.items).toEqual(before.items); expect(after.sessions).toEqual(before.sessions); expect(after.events).toEqual(before.events); expect(after.version).toBe(before.version);
+    expect(after.requests).toHaveLength(1);
+    expect((await commitSchedule(requester, commitInput(prepared), after)).receipt).toMatchObject({ outcome: "replayed", submissionOutcome: "pending", requestStatus: "pending" });
+    expect(await getDemoState(requester)).toEqual(after);
+  });
+  it("denies impersonation, existing work edits, missing estimates and unscheduled/ongoing requests", async () => {
+    const input = await inputFor(), before = await getDemoState(requester);
+    if (input.change.kind !== "create") throw new Error("fixture");
+    for (const change of [{ ...input.change, task: { ...input.change.task, requesterId: owner.id } },
+      { kind: "ongoing", workItemId: "website" }, { kind: "book", workItemId: "website", booking: input.change.booking },
+      { ...input.change, task: { ...input.change.task, estimatedMinutes: null } }, { ...input.change, booking: undefined }]) {
+      await expect(prepareSchedule(requester, { ...input, change }, before)).rejects.toThrow();
+    }
+    expect(await getDemoState(requester)).toEqual(before);
+  });
+  it("reports invalid dates as cannot_fit without saving a pending request", async () => {
+    const input = await inputFor();
+    if (input.change.kind !== "create") throw new Error("fixture");
+    input.change.booking!.startDate = input.change.booking!.endDate = "2026-11-07";
+    await expect(prepareSchedule(requester, input, await getDemoState(requester))).rejects.toMatchObject({ code: "cannot_fit" });
+    expect((await getDemoState(requester)).requests).toHaveLength(0);
+  });
+});

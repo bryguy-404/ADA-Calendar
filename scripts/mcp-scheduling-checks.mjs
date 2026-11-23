@@ -68,7 +68,7 @@ export async function exerciseScheduling({restartApp,admin,config,owner,viewer,r
   for(const actor of [viewer,requester,other]) {
     const c=await mcp(sessionFiles[actor.id],'auto');
     const denied=await call(c,'prepare_schedule_change',await request({kind:'create',task}),true);
-    assert.equal(denied.code,'access_denied');
+    assert.equal(denied.code,actor.role==='requester'?'invalid_effort':'access_denied');
     const auth=createClient(config.API_URL,config.ANON_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
     checked(await auth.auth.signInWithPassword({email:actor.email,password}));
     assert.equal(checked(await auth.from('mcp_schedule_operations').select('*').eq('workspace_id',workspaceId)).length,0);

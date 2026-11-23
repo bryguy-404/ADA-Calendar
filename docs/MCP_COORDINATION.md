@@ -1,5 +1,13 @@
 # Daily work context coordination
 
+## Requester access — November 23, 2026
+
+Kyle and Willian use their own active requester accounts through the portable Claude Code adapter. See [MCP_TEAMMATE_SETUP.md](MCP_TEAMMATE_SETUP.md) for installation/sign-in/recovery and [MCP_REQUESTER_RELEASE_2026-11-23.md](MCP_REQUESTER_RELEASE_2026-11-23.md) for implementation, verification and release evidence.
+
+Discovery and shared availability now admit owners and requesters. Requesters may prepare/commit **new** work only, with a positive effort estimate and booking dates/minutes; they must omit requesterId. Identity comes from the authenticated membership. Clean fits book through the shared scheduler; capacity conflicts submit an ordinary pending request for Bryan, reserving no work or time. Other invalid plans return cannot_fit. Prepared operations are immutable and actor/workspace-scoped. Retry exact commit arguments after uncertainty; committed events and exact pending-request lookups reconcile before stale-version checks, including requests outside the UI history cap. Completion, context writes, existing-work edits, unknown-effort ongoing work and protected overrides stay owner-only. Saved notification preferences are retained.
+
+Bryan’s separate Claude Code owner connection was natively verified November 23 and has eight tools. Cowork remains read-only. Historical references below to a read-only Claude gateway describe that older gateway/Cowork path, not Bryan’s current Claude Code owner connection. This release preserves their registrations and session paths; teammate installation never grants private agency library access.
+
 ## Scoped scheduling — November 16, 2026
 
 The scheduling extension adds `find_calendar_items`, `get_available_slots`, `prepare_schedule_change` and `commit_schedule_change` to the existing four tools. Exact contracts, examples, test evidence and release/activation status are in [MCP_SCHEDULING_RELEASE_2026-11-16.md](MCP_SCHEDULING_RELEASE_2026-11-16.md). The older sections below describe the original read/context contracts, which remain supported; their historical tool counts do not limit the new extension.

@@ -59,6 +59,8 @@ jobs:
         run: npm test
       - name: Build without live configuration
         run: npm run build
+      - name: Build portable MCP adapter without credentials
+        run: npm run mcp:package
 
   browser:
     name: Isolated demo browser workflows

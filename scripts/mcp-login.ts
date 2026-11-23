@@ -9,12 +9,15 @@ async function main() {
   const origin = process.env.ADA_CALENDAR_URL || "https://ada-calendar-production.up.railway.app";
   const emailPrompt = createInterface({ input: process.stdin, output: process.stderr });
   const email = await emailPrompt.question(`Calendar sign-in (${origin})\nEmail: `); emailPrompt.close();
-  process.stderr.write("Password (hidden): ");
   const silent = new Writable({ write(_chunk, _encoding, callback) { callback(); } });
   const passwordPrompt = createInterface({ input: process.stdin, output: silent, terminal: true });
-  const password = await passwordPrompt.question(""); passwordPrompt.close(); process.stderr.write("\n");
+  // Enable terminal raw input before displaying the prompt: fast input must never
+  // arrive while the terminal still has kernel echo enabled.
+  const passwordAnswer = passwordPrompt.question("");
+  process.stderr.write("Password (hidden): ");
+  const password = await passwordAnswer; passwordPrompt.close(); process.stderr.write("\n");
   const session = await signIn(origin, email.trim(), password, process.env.ADA_CALENDAR_ALLOW_LOCAL === "1");
   await saveSession(file, session);
-  console.error("Signed in. A private refreshable Calendar session was saved; your password was not saved. Treat this file like a password. The MCP adapter exposes reads only.");
+  console.error("Signed in. A private refreshable Calendar session was saved; your password was not saved. Treat this file like a password. Your existing Calendar role controls which MCP actions are permitted.");
 }
 main().catch(error => { console.error(error instanceof CalendarReadError ? error.message : "Sign-in failed. Check the Calendar connection and private session file location."); process.exitCode = 1; });

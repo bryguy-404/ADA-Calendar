@@ -117,7 +117,7 @@ export class CalendarReadClient {
       const { response, session } = await this.get(`/api/mcp-scheduling/${action}`, { actorId: pinned.actorId, workspaceId: pinned.workspaceId, input });
       const data = JSON.parse(new TextDecoder().decode(await boundedResponse(response, 200_000)));
       if (!response.ok) {
-        const codes = new Set(["stale_version", "operation_conflict", "prepare_required", "prepare_uncertain", "save_uncertain", "preview_changed", "schedule_conflict", "scope_violation", "preview_too_large", "invalid_task", "invalid_client", "invalid_requester", "invalid_session", "invalid_duration", "protected_session", "plan_changed"]);
+        const codes = new Set(["stale_version", "operation_conflict", "prepare_required", "prepare_uncertain", "save_uncertain", "preview_changed", "schedule_conflict", "scope_violation", "preview_too_large", "invalid_task", "invalid_client", "invalid_requester", "invalid_session", "invalid_duration", "protected_session", "plan_changed", "invalid_effort", "invalid_booking", "cannot_fit"]);
         if (codes.has(data.code) && typeof data.error === "string") throw new CalendarReadError(data.code, data.error.slice(0, 2000));
         throw new CalendarReadError("request_rejected", "Calendar rejected this request. Verify the exact IDs and typed arguments.");
       }

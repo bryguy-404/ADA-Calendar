@@ -7,6 +7,7 @@
   },
   "scripts": {
     "mcp": "tsx scripts/mcp.ts",
+    "mcp:package": "node scripts/build-mcp-package.mjs",
     "mcp:login": "tsx scripts/mcp-login.ts",
     "test:mcp-fullstack": "node --conditions=react-server --import tsx scripts/mcp-fullstack-test.mjs",
     "dev": "next dev --hostname 127.0.0.1",
@@ -54,6 +55,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "@vitest/coverage-v8": "5.0.0",
+    "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.4",
     "prettier": "3.9.6",

@@ -17,6 +17,7 @@ import {localDate, localDateTime, addDays, nextWorkDate} from '../src/lib/time.t
 import {signIn, saveSession} from '../src/lib/mcp/client.ts';
 import {readStatus} from './crm-fullstack/stack.mjs';
 import {exerciseContextWrites} from './mcp-context-checks.mjs';
+import {exerciseRequester} from './mcp-requester-checks.mjs';
 import {exerciseScheduling} from './mcp-scheduling-checks.mjs';
 
 const root=fileURLToPath(new URL('../',import.meta.url)),origin='http://127.0.0.1:3196';
@@ -86,7 +87,7 @@ async function main() {
   const restartApp=async()=>{
     if(child&&child.exitCode===null){child.kill('SIGTERM');await new Promise(resolve=>child.once('exit',resolve));}
   const fd=openSync(path.join(output,'server.log'),'a',0o600);
-  child=spawn(process.execPath,[path.join(root,'node_modules/next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port','3196'],{cwd:root,env,stdio:['ignore',fd,fd]});closeSync(fd);
+  child=spawn(process.execPath,[path.join(root,'node_modules/next/dist/bin/next'),'dev','--webpack','--hostname','127.0.0.1','--port','3196'],{cwd:root,env,stdio:['ignore',fd,fd]});closeSync(fd);
   const deadline=Date.now()+90000;
   for(;;){if(child.exitCode!==null)throw new Error('Local app exited.');try{if((await fetch(origin+'/api/health')).ok)break;}catch{}if(Date.now()>deadline)throw new Error('Local app startup timed out.');await delay(300);}
   };
@@ -155,6 +156,7 @@ async function main() {
   }
   assert.equal(hash(await api('state')),beforeHash,'All MCP reads must leave work, history, events and settings byte-identical');
   await exerciseScheduling({restartApp,admin,config,owner,viewer,requester,other,password,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
+  await exerciseRequester({restartApp,admin,config,owner,viewer,requester,other,password,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
   await exerciseContextWrites({admin,config,owner,viewer,requester,other,password,users,workspaceId,otherWorkspaceId,ownerMcp,mcp,sessionFiles,call,api,page,origin,date,past,at,output,checked,expect,evidence});
   const noSession=await fetch(origin+'/api/state');assert.notEqual(noSession.status,200);
   checked(await admin.from('workspace_members').update({active:false}).eq('workspace_id',workspaceId).eq('user_id',owner.id));
@@ -176,7 +178,7 @@ finally {
       assert.match(id,/^[a-f0-9-]{36}$/);
       const statements=['begin;',`delete from pgmq.q_ada_notifications where message->>'notificationId' in (select id from public.notifications where workspace_id='${id}');`];
       statements.push(`delete from public.crm_changes where integration_id in (select id from public.crm_integrations where workspace_id='${id}');`);
-      for(const table of ['notifications','attachments','crm_task_links','crm_client_mappings','crm_integrations','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${id}';`);
+      for(const table of ['notifications','attachments','pending_requests','crm_task_links','crm_client_mappings','crm_integrations','work_events','work_sessions','workspace_members','workspaces'])statements.push(`delete from public.${table} where ${table==='workspaces'?'id':'workspace_id'}='${id}';`);
       statements.push('commit;');execFileSync('docker',['exec','-i',container,'psql','-X','-v','ON_ERROR_STOP=1','-U','postgres','-d','postgres'],{input:statements.join('\n'),stdio:['pipe','pipe','pipe']});
     }
     for(const id of users)checked(await admin.auth.admin.deleteUser(id));

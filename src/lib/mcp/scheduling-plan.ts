@@ -15,7 +15,7 @@ export function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 export const digest = (value: unknown) => createHash("sha256").update(canonical(value)).digest("hex");
-export const source = (s: AppState) => ({ workspaceId: s.workspaceId, scheduleVersion: s.version, actorId: s.actor.id, mode: s.mode, timeZone: s.settings.timeZone });
+export const source = (s: AppState) => ({ workspaceId: s.workspaceId, scheduleVersion: s.version, actorId: s.actor.id, actorRole: s.actor.role, mode: s.mode, timeZone: s.settings.timeZone });
 export function discover(state: AppState, raw: unknown) {
   const input = discoverySchema.parse(raw), query = input.query.toLocaleLowerCase();
   const plannedCounts = new Map<string, number>();
@@ -85,6 +85,7 @@ export function assertScope(state: AppState, proposal: ScheduleProposal, input: 
 }
 export function preparePlan(state: AppState, actor: Actor, input: PrepareScheduleInput, now = new Date().toISOString()) {
   const change = input.change;
+  assertRequesterInput(actor, input);
   const getItem = (id: string) => { const item = state.items.find(i => i.id === id); if (!item || ["completed", "cancelled"].includes(item.status)) throw new SchedulingError("invalid_task", "Choose an existing active task."); return item; };
   let commands: WorkCommand[];
   if (change.kind === "create") {
@@ -115,6 +116,11 @@ export function preparePlan(state: AppState, actor: Actor, input: PrepareSchedul
   }
   const plan = (cmds: WorkCommand[]) => withReviewFingerprint(planCommands(state, cmds, actor, { operationId: input.operationId, now, approveDisplacement: false }));
   let proposal = plan(commands);
+  if (actor.role === "requester" && proposal.status !== "ready") {
+    if (!proposal.conflicts.length || proposal.conflicts.some(c => c.code !== "smart_fit_capacity"))
+      throw new SchedulingError("cannot_fit", proposal.conflicts.map(c => c.message).join(" "));
+    return { proposal, diff: { items: [], sessions: [] }, outcome: "pending" as const };
+  }
   assertScope(state, proposal, input);
   // Freeze smart-fit placements into explicit shared-scheduler commands. IDs and exact
   // placements then survive a restarted adapter, server process, or lost response.
@@ -130,5 +136,17 @@ export function preparePlan(state: AppState, actor: Actor, input: PrepareSchedul
     if (canonical(exactDiff(state, frozen)) !== canonical(exactDiff(state, proposal))) throw new SchedulingError("plan_changed", "The exact booking could not be preserved; review a smaller request.");
     proposal = frozen;
   }
-  return { proposal, diff: assertScope(state, proposal, input) };
+  return { proposal, diff: assertScope(state, proposal, input), outcome: "booked" as const };
+}
+
+/** Requester inputs cannot select another identity or reach any existing-work command. */
+export function assertRequesterInput(actor: Actor, input: PrepareScheduleInput) {
+  if (actor.role !== "requester") return;
+  const change = input.change;
+  if (change.kind !== "create" || change.task.requesterId !== undefined)
+    throw new SchedulingError("access_denied", "Requesters can create new work only, using their own signed-in identity. Omit requesterId.", 403);
+  if (!change.task.estimatedMinutes || change.task.estimatedMinutes <= 0)
+    throw new SchedulingError("invalid_effort", "A new request needs a positive effort estimate.", 400);
+  if (!change.booking || change.booking.resumeWaiting)
+    throw new SchedulingError("invalid_booking", "Provide scheduling dates and positive booking minutes for the new request.", 400);
 }

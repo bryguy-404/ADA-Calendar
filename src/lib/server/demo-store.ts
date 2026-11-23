@@ -59,7 +59,7 @@ export function demoActor(id: string | undefined): Actor {
   if (!actor) throw new Error("Unknown demo account.");
   return actor;
 }
-function trustedActor(state: StoredState, actor: Actor) {
+export function trustedActor(state: StoredState, actor: Actor) {
   const trusted = state.members.find(member => member.id === actor.id);
   if (!trusted || trusted.role !== actor.role || trusted.email !== actor.email || trusted.name !== actor.name) throw new Error("The actor does not match workspace membership.");
   return trusted;
